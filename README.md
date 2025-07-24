@@ -8,6 +8,8 @@
 
 ```
 --------------------------------------------------------
-ABOUT THE PROJECT 
-
-DAK Despatch and Acquired Register
+## ABOUT THE PROJECT 
+## WHAT TO INSTALL ?
+## HOW TO RUN ?
+## FEATURES
+## FUTURE UPDATES
