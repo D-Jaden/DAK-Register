@@ -1,1 +1,0 @@
-Using the Helsinki Model of Eng to Hindi To Tanslate and Obtain my Own API
