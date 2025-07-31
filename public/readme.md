@@ -1,1 +1,3 @@
-stuff which is included
+# HTML CSS AND JAVASCRIPT FILES 
+
+- FRONT END AND FUNCTIONING 
