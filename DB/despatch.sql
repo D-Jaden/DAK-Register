@@ -1,0 +1,10 @@
+CREATE TABLE despatch (serial_no INTEGER NOT NULL,
+  date DATE NOT NULL,
+  eng_to_whom_sent VARCHAR (255) NOT NULL,
+  hi_to_whom_sent VARCHAR (255) NOT NULL,
+  eng_place VARCHAR (255) NOT NULL,
+  hi_place VARCHAR (255) NOT NULL,
+  eng_subject VARCHAR (255) NOT NULL,
+  hi_subject VARCHAR (255) NOT NULL,
+  eng_sent_by VARCHAR (255) NOT NULL,
+  hi_sent_by VARCHAR (255) NOT NULL);
