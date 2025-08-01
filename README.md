@@ -1,4 +1,4 @@
-![logo](https://github.com/D-Jaden/DAK-Register/blob/main/public/images/NIC%20Logo%20JPG/ICONIC_SQUARE_NIC_Logo_white_bg-01.jpg) ![logo](https://indiadesignsystem.bombaydc.com/design/Digital-India)
+![logo](https://github.com/D-Jaden/DAK-Register/blob/main/public/images/NIC%20Logo%20JPG/ICONIC_SQUARE_NIC_Logo_white_bg-01.jpg)
 # NIC PROJECT
 ```
      _   __ __ _____   ____  ___    __ __    __    ____  ______
