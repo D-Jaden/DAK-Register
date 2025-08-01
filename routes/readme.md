@@ -1,3 +1,4 @@
+![logo](https://img.icons8.com/?size=100&id=hsPbhkOH4FMe&format=png&color=000000) ![logo](https://img.icons8.com/?size=100&id=108784&format=png&color=000000)
 # SERVER SIDE ROUTES FOR THE JAVASCRIPT FILES
 
 - userRoutes.js is for login.html
