@@ -166,20 +166,18 @@ let maxUndoSteps = 50;
 function initializeTextFormatting() {
     console.log('Initializing text formatting...');
     
-    // Make all table cells editable
+    
     makeTableCellsEditable();
     
-    // Set up button event listeners
+    
     setupFormattingButtons();
     
-    // Set up keyboard shortcuts
     setupKeyboardShortcuts();
-    
-    // Update button states initially
+
     updateUndoRedoButtons();
 }
 
-// Make table cells editable
+// MAKE TABLE CELLS EDITABLE
 function makeTableCellsEditable() {
     const tableBody = document.getElementById('tableBody');
     if (!tableBody) {
@@ -187,13 +185,13 @@ function makeTableCellsEditable() {
         return;
     }
 
-    // Make existing cells editable
+    // MAKE EXISTING TABLES EDITABLE 
     const cells = tableBody.querySelectorAll('td');
     cells.forEach(cell => {
         setupCellEditing(cell);
     });
 
-    // Observer to handle dynamically added rows
+    //HANDLE DYNAMICALLY ADDED ROWS
     const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
             mutation.addedNodes.forEach(function(node) {
@@ -210,7 +208,7 @@ function makeTableCellsEditable() {
     observer.observe(tableBody, { childList: true, subtree: true });
 }
 
-// Setup individual cell editing
+// SETUP INDIVIDUAL EDITING CELLS
 function setupCellEditing(cell) {
     cell.contentEditable = true;
     cell.style.cursor = 'text';
@@ -606,62 +604,70 @@ underlineBtn.addEventListener('click', () => {
 
 //--------------------------UNDO REDO---------------------------------//
 
+//==================================================
+//FIND AND REPLACE
+//==================================================
 
-//------------------------FIND AND REPLACE---------------------------//
+// Select elements
+const findInput = document.querySelector('.find-box');
+const replaceInput = document.querySelector('.replace-box');
+const replaceBtn = document.querySelector('.replace-btn');
+const matchCounter = document.querySelector('.match-counter span');
+const tableBody = document.getElementById('tableBody');
 
-document.addEventListener('DOMContentLoaded', () => {
-    const findBox = document.querySelector('.find-box');
-    const replaceBox = document.querySelector('.replace-box');
-    const findBtn = document.querySelector('#findWord');
-    const replaceBtn = document.querySelector('#replaceWord');
-    const matchCounter = document.querySelector('.match-counter span');
-    const tableBody = document.getElementById('tableBody');
+// Function to get all cells
+function getCells() {
+    return tableBody.querySelectorAll('.cell');
+}
 
-    // Function to update match count
-    function updateMatchCount() {
-        const findText = findBox.value.trim();
-        if (!findText) {
-            matchCounter.textContent = '0';
-            return;
-        }
-        let matchCount = 0;
-        const cells = tableBody.querySelectorAll('td');
-        const regex = new RegExp(findText, 'gi');
-        cells.forEach(cell => {
-            const matches = cell.textContent.match(regex) || [];
-            matchCount += matches.length;
-        });
-        matchCounter.textContent = matchCount;
+// Find functionality - triggers as user types
+findInput.addEventListener('input', () => {
+    const searchTerm = findInput.value.trim().toLowerCase();
+    const cells = getCells();
+    
+    // If search term is empty, clear highlights and reset counter
+    if (!searchTerm) {
+        cells.forEach(cell => cell.classList.remove('highlight'));
+        matchCounter.textContent = '0';
+        return;
     }
-
-    // Find button event listener
-    findBtn.addEventListener('click', () => {
-        updateMatchCount();
+    
+    let matchCount = 0;
+    cells.forEach(cell => {
+        const text = cell.value.toLowerCase(); // Use value instead of textContent
+        if (text.includes(searchTerm)) {
+            cell.classList.add('highlight');
+            matchCount++;
+        } else {
+            cell.classList.remove('highlight');
+        }
     });
-
-    // Replace button event listener
-    replaceBtn.addEventListener('click', () => {
-        const findText = findBox.value.trim();
-        const replaceText = replaceBox.value;
-        if (!findText) return;
-
-        const regex = new RegExp(findText, 'g');
-        const cells = tableBody.querySelectorAll('td');
-        cells.forEach(cell => {
-            cell.textContent = cell.textContent.replace(regex, replaceText);
-        });
-        updateMatchCount();
-    });
-
-    // Update match count on input change
-    findBox.addEventListener('input', updateMatchCount);
+    matchCounter.textContent = matchCount;
 });
 
-//---------------------------------------------------------------------------//
-//---------------------------TABLE OPTIONS----------------------------------//
-//-------------------------------------------------------------------------//
+// Replace functionality - triggers on button click
+replaceBtn.addEventListener('click', () => {
+    const searchTerm = findInput.value.trim();
+    const replaceTerm = replaceInput.value;
+    if (!searchTerm) return; // Do nothing if no search term
+    
+    const cells = getCells();
+    cells.forEach(cell => {
+        if (cell.classList.contains('highlight')) {
+            const regex = new RegExp(searchTerm, 'gi'); // Case-insensitive replacement
+            cell.value = cell.value.replace(regex, replaceTerm); // Use value instead of textContent
+            cell.classList.remove('highlight');
+        }
+    });
+    matchCounter.textContent = '0'; // Reset counter after replacement
+});
 
-//----------------------Add New Row--------------------------------------//
+//====================================================
+//TABLE OPTIONS
+//====================================================
+
+
+//-------------------------------ADD NEW ROW--------------------------------------//
 
 function addNewRow() {
     rowCount++;
@@ -686,7 +692,7 @@ function addNewRow() {
         <td class="row-number">${rowCount}</td>
         <td><input type="date" class="cell" required data-row="${rowCount-1}" data-field="date" placeholder="Enter date..."></td>
         <td>
-            <input id = "r1" type="text" class="cell english-cell" required data-row="${rowCount-1}" data-field="toWhom" placeholder="Enter recipient...">
+            <input id = "r1" type="text" class="cell english-cell" required data-row="${rowCount-1}" data-field="toWhom" placeholder="Enter recipient..." style = "word-wrap: break-word;">
             <input type="text" class="cell hindi-cell" data-row="${rowCount-1}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled>
         </td>
         <td>
@@ -714,7 +720,7 @@ function addNewRow() {
     addRowInsertionListeners(row);
 }
 
-//------------------------------Move To Next Cell---------------------------------------------//
+//-------------------------------------MOVE TO NEXT CELL---------------------------------------------//
 
 function moveToNextCell(currentCell) {
     const allCells = document.querySelectorAll('.cell');
@@ -731,7 +737,7 @@ function moveToNextCell(currentCell) {
     }
 }
 
-//----------------------------------------Sort Column---------------------------------------------//
+//----------------------------------------SORT COLUMN---------------------------------------------//
 
 function sortColumn(field, order) {
     syncTableDataWithDOM();
@@ -758,7 +764,7 @@ function sortColumn(field, order) {
     document.querySelectorAll('.sort-dropdown').forEach(d => d.classList.remove('show'));
 }
 
-//-------------------------------------Search Specific Column-----------------------------------------//
+//-------------------------------------SEARCH SPECIFIC COLUMN-----------------------------------------//
 
 function searchColumn(column) {
     const input = document.querySelector(`input[data-column="${column}"]`);
@@ -776,7 +782,7 @@ function searchColumn(column) {
     document.getElementById(`sort-${column}`).classList.remove('show');
 }
 
-//--------------------------------------Clear Column Search------------------------------------------//
+//--------------------------------------CLEAR COLUMN SEARCH-----------------------------------------//
 
 function clearColumnSearch(column) {
     const input = document.querySelector(`input[data-column="${column}"]`);
@@ -785,7 +791,7 @@ function clearColumnSearch(column) {
     applyAllFilters();
 }
 
-//----------------------------------- Apply All Active Filters--------------------------------------//
+//-------------------------------------APPLY ALL ACTIVE FILTERS--------------------------------------//
 
 function applyAllFilters() {
     const tbody = document.getElementById('tableBody');
@@ -838,7 +844,7 @@ function syncTableDataWithDOM() {
     });
 }
 
-//-----------------------------------Toggle Sort Menu-------------------------------------------//
+//------------------------------------------TOGGLE SORT MENU-------------------------------------------//
 
 function toggleSortMenu(column) {
     const dropdown = document.getElementById(`sort-${column}`);
@@ -866,7 +872,7 @@ function toggleSortMenu(column) {
     }, 0);
 }
 
-// Setup row insertion
+//ROW INSERTION
 
 function setupRowInsertion() {
     const tbody = document.getElementById('tableBody');
@@ -876,7 +882,8 @@ function setupRowInsertion() {
     });
 }
 
-// Add row insertion listeners
+// ADD ROW LISTENERS
+
 function addRowInsertionListeners(row) {
     const insertBtn = document.createElement('div');
     insertBtn.className = 'insert-row-btn';
@@ -905,7 +912,11 @@ function addRowInsertionListeners(row) {
     });
 }
 
-// Insert row after specified row
+//======================================================
+//SMALL FEATURES
+//=====================================================
+
+// INSERT ROW AFTER ANOTHER ROW
 
 function insertRowAfter(targetRow) {
     const tbody = document.getElementById('tableBody');
@@ -961,7 +972,7 @@ function insertRowAfter(targetRow) {
     cells[0].focus();
 }
 
-// Update row numbers
+//UPDATE ROW NUMBERS
 function updateRowNumbers() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
@@ -977,7 +988,7 @@ function updateRowNumbers() {
     });
 }
 
-// Show context menu
+//SHOW CONTEXT MENUS
 
 function showContextMenu(event, row) {
     const existingMenu = document.querySelector('.context-menu');
@@ -1024,7 +1035,7 @@ function showContextMenu(event, row) {
     });
 }
 
-// Insert row at index
+//INSERT ROW AT INDEX
 
 function insertRowAt(index) {
     const tbody = document.getElementById('tableBody');
@@ -1033,7 +1044,7 @@ function insertRowAt(index) {
     else insertRowAfter(rows[index - 1]);
 }
 
-// Insert row before target
+// INSERT ROW BEFORE TARGET
 
 function insertRowBefore(targetRow) {
     const tbody = document.getElementById('tableBody');
@@ -1089,7 +1100,7 @@ function insertRowBefore(targetRow) {
     cells[0].focus();
 }
 
-// Delete row
+//DELETE ROW
 
 function deleteRow(row, index) {
     const tbody = document.getElementById('tableBody');
@@ -1104,7 +1115,7 @@ function deleteRow(row, index) {
     rowCount--;
 }
 
-// Add cell event listeners
+//ADD CELL EVENT LISTENERS
 
 function addCellEventListeners(cell) {
     cell.addEventListener('focus', function() {
@@ -1186,8 +1197,10 @@ function getFilledRows() {
     
     return { filledRows, validationErrors };
 }
+//=============================
+//SAVE TO DATABASE
+//=============================
 
-// Save data to database
 async function saveToDatabase() {
     console.log('🔄 Save button clicked - starting save process...');
     
@@ -1320,7 +1333,7 @@ async function translateText(text) {
     } 
 }
 
-// better performance
+//FASTER TRANSLATION ALT
 
 async function translateTextBatch(texts) {
     try {
@@ -1364,7 +1377,7 @@ async function translateTextBatch(texts) {
     }
 }
 
-// Save data and handle translation
+//SAVE DATA AND HANDLE TRANSLATION
 
 async function saveData(cell) {
     const row = parseInt(cell.getAttribute('data-row'));
@@ -1420,7 +1433,7 @@ async function saveData(cell) {
         });
 }*/
 
-// Rebuild table
+// REBUILD DATA
 function rebuildTable() {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
@@ -1460,6 +1473,6 @@ function rebuildTable() {
     });
 }
 
-// Initialize on load
+//INITIALIZE ON LOAD
 
 window.addEventListener('load', initializeTable);
