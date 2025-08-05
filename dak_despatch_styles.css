@@ -32,7 +32,12 @@ body {
 .mobile-menu-toggle:hover {
     background-color: #1e5f8a;
 }
-
+.cell.highlight {
+    background-color:  #93cfe4 !important;
+}
+.cell.highlight:hover{
+    background: rgb(13, 15, 109);
+}
 /*==============================================================================*/
 /*FLIP CONTAINER*/
 /*==============================================================================*/
@@ -622,11 +627,13 @@ body {
     visibility: visible;
     opacity: 1;
 }
-
-/*---------------------------------TABLE--------------------------------*/
+/*-----------------------------------------------------------------------*/
+/*---------------------------------TABLE---------------------------------*/
+/*-----------------------------------------------------------------------*/
 .table-container {
     padding: 20px;
-    overflow-x: scroll;
+    table-layout: fixed;
+    overflow-x: auto;
 }
 
 .excel-table {
@@ -670,6 +677,8 @@ body {
     border: 1px solid #e1e8ed;
     background: white;
     transition: all 0.3s ease;
+    overflow-wrap: break-word; 
+    white-space: normal;
 }
 
 .column-header {
@@ -677,6 +686,76 @@ body {
     justify-content: space-between;
     align-items: center;
     width: 100%;
+}
+.cell {
+    width: 100%; 
+    height: 60px;
+    padding: 12px;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-family: inherit;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: block; 
+    text-align: left;
+    box-sizing: border-box; 
+    overflow-wrap: break-word; 
+    white-space: normal;
+}
+
+.hindi-cell {
+    width: 100%;
+    height: 60px; 
+    padding: 8px 12px;
+    border: none;
+    outline: none;
+    font-size: 13px; 
+    font-family: 'Noto Sans Devanagari', 'Segoe UI', sans-serif;
+    background: #f8f9fa; 
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: block;
+    text-align: left;
+    border-top: 1px solid #e1e8ed; 
+}
+
+.cell:hover, .hindi-cell:hover {
+    background: linear-gradient(135deg, #f8f9fa 0%, #cfe1f3 100%);
+}
+
+.cell:focus, .hindi-cell:focus {
+    background: linear-gradient(135deg, #e3f2fd 0%, #cfe1f3 100%);
+    cursor: text;
+    box-shadow: inset 0 0 0 2px #a6c9e7;
+}
+
+.cell.editing, .hindi-cell.editing {
+    background: linear-gradient(135deg, #fff3e0 0%, #77aadd 100%);
+    box-shadow: inset 0 0 0 2px #c0c5e7;
+}
+
+.row-number {
+    background: linear-gradient(135deg, #f8f9fa 0%, #cfe1f3 100%);
+    font-weight: 600;
+    color: #6c757d;
+    text-align: center;
+    width: 60px;
+    border-right: 2px solid #dee2e6;
+}
+
+.excel-table tr:nth-child(even) td:not(.row-number) {
+    background: #f8f9fa;
+}
+
+.excel-table tr:hover td {
+    background: linear-gradient(135deg, #e8f5e8 0%, #cfe1f3 100%);
+}
+
+.excel-table tr:hover td.row-number {
+    background: linear-gradient(135deg, #e3f2fd 0%, #cfe1f3 100%);
+    color: #1976d2;
 }
 
 .hamburger-menu {
@@ -780,73 +859,6 @@ body {
 }
 
 
-.cell {
-    width: 100%;
-    height: 50px;
-    padding: 12px;
-    border: none;
-    outline: none;
-    font-size: 14px;
-    font-family: inherit;
-    background: transparent;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: block; 
-    text-align: left;
-}
-
-.hindi-cell {
-    width: 100%;
-    height: 50px; 
-    padding: 8px 12px;
-    border: none;
-    outline: none;
-    font-size: 13px; 
-    font-family: 'Noto Sans Devanagari', 'Segoe UI', sans-serif;
-    background: #f8f9fa; 
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: block;
-    text-align: left;
-    border-top: 1px solid #e1e8ed; 
-}
-
-.cell:hover, .hindi-cell:hover {
-    background: linear-gradient(135deg, #f8f9fa 0%, #cfe1f3 100%);
-}
-
-.cell:focus, .hindi-cell:focus {
-    background: linear-gradient(135deg, #e3f2fd 0%, #cfe1f3 100%);
-    cursor: text;
-    box-shadow: inset 0 0 0 2px #a6c9e7;
-}
-
-.cell.editing, .hindi-cell.editing {
-    background: linear-gradient(135deg, #fff3e0 0%, #77aadd 100%);
-    box-shadow: inset 0 0 0 2px #c0c5e7;
-}
-
-.row-number {
-    background: linear-gradient(135deg, #f8f9fa 0%, #cfe1f3 100%);
-    font-weight: 600;
-    color: #6c757d;
-    text-align: center;
-    width: 60px;
-    border-right: 2px solid #dee2e6;
-}
-
-.excel-table tr:nth-child(even) td:not(.row-number) {
-    background: #f8f9fa;
-}
-
-.excel-table tr:hover td {
-    background: linear-gradient(135deg, #e8f5e8 0%, #cfe1f3 100%);
-}
-
-.excel-table tr:hover td.row-number {
-    background: linear-gradient(135deg, #e3f2fd 0%, #cfe1f3 100%);
-    color: #1976d2;
-}
 
 /*----------------------------------------------ROW INSERTION--------------------------------------------------------------*/
 .insert-row-btn {
@@ -914,6 +926,8 @@ body {
 
 /*-----------------------------BOTTOM-BUTTONS------------------------------*/
 .add-row-btn {
+    position:relative;
+    bottom:6rem;
     margin: 20px 0;
     padding: 12px 24px;
     background: linear-gradient(135deg, #18A209 0%, #18a209e7 100%);
@@ -937,6 +951,8 @@ body {
 }
 
 .save-btn {
+    position:relative;
+    bottom:6rem;
     margin: 30px 0px;
     padding: 12px 24px;
     background: linear-gradient(135deg, #18A209 0%, #18a209f9 100%);
@@ -995,6 +1011,8 @@ body {
 }
 
 .switch-btn {
+    position:relative;
+    bottom:6rem;
     margin: 35px 0px;
     padding: 12px 24px;
     background: linear-gradient(135deg, #2c3e50 0%, #201c62 100%);
@@ -1088,6 +1106,7 @@ body {
 
     .cell {
         height: 45px;
+        width:120px;
     }
 
     .hindi-cell {
@@ -1106,7 +1125,8 @@ body {
     }
     .button-container{
         position: relative;
-        bottom:13rem;
+        bottom:6rem;
+        left:4rem;
     }
 
 }
@@ -1149,13 +1169,6 @@ body {
         position: static;
         margin: 10px 0;
     }
-    .match-counter {
-        position: static;
-        margin: 5px 0;
-        height: 38px;
-        width: 500px;
-    }
-
     .undo-btn, .redo-btn{
         position:relative;
         top:-9rem;
@@ -1183,22 +1196,28 @@ body {
     .find-btn, .replace-btn {
         width: 100%;
     }
+    .match-counter{
+        position:relative;
+        border: solid 1px #000000;
+        width:120px;
+        height:80px;
+        left: 14rem;
+        bottom:20px;
+    }
     .search-container{
         position:relative;
-        right:46rem;
-        top:6rem;
-
+        right:32rem;
+        bottom:11rem;
     }
     .entries-btn, .dropdown-toggle{
-        right:5rem;
-    }
-    .entries-btn{
-        width:170px;
+        right:8.5rem;
     }
     .pdf-btn{
-        width:200px;
+        width:150px;
     }
- 
+    .entries-btn{
+        width:120px;
+    }
     .export-section {
         justify-content: center;
         flex-direction: column;
