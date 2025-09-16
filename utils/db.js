@@ -1,8 +1,13 @@
-//-----------------------------------------//
-//-----------CONNECTING TO DB-------------//
+//=============================
+//CONNECTING TO DB
+//=============================
 
+//====================================
+//VARIABLE CONNECTING TO .ENV FILE
+//====================================
+
+require('@dotenvx/dotenvx').config();
 const { Pool } = require('pg');
-require('dotenv').config();
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -14,7 +19,10 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000
 });
 
-//--------------TESTING-------------//
+//============================
+//TESTING DB CONNECTION
+//============================
+
 (async () => {
   try {
     const client = await pool.connect();
