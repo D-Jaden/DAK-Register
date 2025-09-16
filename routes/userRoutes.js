@@ -2,7 +2,6 @@
 //LOGIN AND REGISTRATION ROUTES
 //===============================
 
-
 //================
 //VARIABLES
 //================
@@ -11,15 +10,13 @@ require('@dotenvx/dotenvx').config();
 const express = require('express');
 const router = express.Router();
 const JWT = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET
+const JWT_SECRET = process.env.JWT_SECRET;
 const pool = require('/home/jaden-d-syiem/DAK Register /utils/db.js');
-
 
 //=====================
 //JWT AUTHENTICATION
 //=====================
 
-//console.log('JWT_SECRET:', JWT_SECRET);
 function authenticateJWT(req, res, next) {
     const authHeader = req.headers.authorization;
     if (authHeader) {
@@ -66,7 +63,15 @@ router.post("/login", async (req, res) => {
 router.post("/register", async (req, res) => {
   const { first_name, last_name, phone_no } = req.body;
   
-  //Capitalizing first alphabet for first and last name and lowering the rest 
+  // Validate input
+  if (!first_name || !last_name || !phone_no) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'All fields are required' 
+    });
+  }
+  
+  // Capitalizing first alphabet for first and last name and lowering the rest 
   const normalizedFirstName = first_name.charAt(0).toUpperCase() + first_name.slice(1).toLowerCase();
   const normalizedLastName = last_name.charAt(0).toUpperCase() + last_name.slice(1).toLowerCase();
 
@@ -80,25 +85,39 @@ router.post("/register", async (req, res) => {
     if (checkResult.rows.length > 0) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Account Exists' 
+        error: 'Account already exists' 
       });
     }
-
-    // Insert new user
+    
+    // Insert new user (user_id will be auto-generated)
     const insertResult = await pool.query(
       `INSERT INTO users (first_name, last_name, phone_no) 
-       VALUES ($1, $2, $3) RETURNING *`,
-      [first_name, last_name, phone_no]
+       VALUES ($1, $2, $3) RETURNING user_id`,
+      [normalizedFirstName, normalizedLastName, phone_no]
     );
+    
+    if (insertResult.rows.length === 0) {
+      throw new Error('Failed to create user');
+    }
 
+    const userId = insertResult.rows[0].user_id;
+    const token = JWT.sign({ user_id: userId }, JWT_SECRET, { expiresIn: '1d' });
+
+    // Send single response
     res.json({ 
       success: true,
+      token,
+      user_id: userId,
       user: insertResult.rows[0],
       message: 'Account created successfully'
     });
+    
   } catch (err) {
     console.error('Registration error:', err);
-    res.status(500).json({ success: false, error: 'Database error' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Database error: ' + err.message
+    });
   }
 });
 
