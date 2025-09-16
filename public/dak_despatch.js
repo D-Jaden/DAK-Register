@@ -4,6 +4,8 @@
 
 let rowCount = 0;
 let tableData = [];
+let entriesPerPage = 6;
+let currentPage = 1;
 const translatableColumns = ['toWhom', 'place', 'subject', 'sentBy'];
 let translationCache = new Map();
 
@@ -15,29 +17,144 @@ function debounce(func, wait) {
         timeout = setTimeout(() => func.apply(this, args), wait);
     };
 }
+
+//========================================
+//MOBILE TOOLBAR
+//========================================
+function toggleMobileMenu() {
+    const toolbar = document.getElementById('toolbar');
+    toolbar.classList.toggle('active');
+}
+
+function toggleDropdown() {
+    const container = document.querySelector('.split-btn-container');
+    container.classList.toggle('active');
+}
+
+// Close mobile menu when clicking outside
+document.addEventListener('click', function(event) {
+    const toolbar = document.getElementById('toolbar');
+    const toggle = document.querySelector('.mobile-menu-toggle');
+    
+    // Check if elements exist before accessing their methods
+    if (toolbar && toggle && !toolbar.contains(event.target) && !toggle.contains(event.target)) {
+        toolbar.classList.remove('active');
+    }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const container = document.querySelector('.split-btn-container');
+    
+    // Check if element exists before accessing its methods
+    if (container && !container.contains(event.target)) {
+        container.classList.remove('active');
+    }
+});
+
+// Function to switch to the other page with flip effect
+function switchPage(targetPage) {
+    localStorage.setItem('flipTo', targetPage);
+    const flipContainer = document.getElementById('flipContainer');
+    flipContainer.classList.add('flip-out');
+    setTimeout(() => {
+        window.location.href = targetPage === 'despatch' ? 'dak_despatch.html' : 'dak_acquired.html';
+    }, 600); // Match animation duration
+}
+
+// On page load, check if flip-in animation should be applied
+window.addEventListener('load', () => {
+    const flipTo = localStorage.getItem('flipTo');
+    const currentPage = window.location.pathname.includes('dak_despatch.html') ? 'despatch' : 'acquired';
+    if (flipTo === currentPage) {
+        const flipContainer = document.getElementById('flipContainer');
+        flipContainer.classList.add('flip-in');
+        localStorage.removeItem('flipTo');
+    }
+});
+
 //==========================================
-//Initialize table
+//DATE FUNCTIONALITY
+//==========================================
+
+function restrictDateInput(input) {
+    // Remove any non-numeric characters except slashes
+    input.value = input.value.replace(/[^0-9/]/g, '');
+
+    // Ensure the format is dd/mm/yyyy
+    let value = input.value;
+    
+    // Auto-add slashes after day and month
+    if (value.length === 2 && !value.includes('/')) {
+        input.value = value + '/';
+    } else if (value.length === 5 && value.split('/').length === 2) {
+        input.value = value + '/';
+    }
+
+    // Limit input length to 10 (dd/mm/yyyy)
+    if (value.length > 10) {
+        input.value = value.slice(0, 10);
+    }
+
+    // Validate date format (dd/mm/yyyy)
+    if (value.length === 10) {
+        const parts = value.split('/');
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+
+        // Check for valid days in month (basic, without leap year for Feb)
+        let isValid = true;
+        if (month < 1 || month > 12) isValid = false;
+        if (day < 1 || day > 31) isValid = false;
+        if ([4,6,9,11].includes(month) && day > 30) isValid = false;
+        if (month === 2 && day > 29) isValid = false;
+        if (year < 1000 || year > 9999) isValid = false;
+
+        if (!isValid) {
+            input.setCustomValidity('Please enter a valid date in dd/mm/yyyy format');
+            input.reportValidity();
+        } else {
+            input.setCustomValidity('');
+        }
+    } else {
+        input.setCustomValidity('');
+    }
+}
+
+function parseDate(dateStr) {
+    if (!dateStr) return new Date('1900-01-01');
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return new Date('1900-01-01');
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+}
+
+//==========================================
+//INITIALIZE TABLE
 //==========================================
 function initializeTable() {
     for (let i = 0; i < 6; i++) {
         addNewRow();
     }
+    rebuildTable();
     setupRowInsertion();
     
     // Add event listeners with null checks
     const addRowBtn = document.querySelector('.add-row-btn');
     if (addRowBtn) addRowBtn.addEventListener('click', addNewRow);
-    const pdfBtn = document.querySelector('.pdf-btn');
-    if (pdfBtn) pdfBtn.addEventListener('click', viewPdf);
-    
+ 
     // NEW: Add save and load button listeners
     const saveBtn = document.querySelector('.save-btn');
-    if (saveBtn) saveBtn.addEventListener('click', saveToDatabase);
-    const loadBtn = document.querySelector('.load-btn');
-    if (loadBtn) loadBtn.addEventListener('click', loadFromDatabase);
-    const clearBtn = document.querySelector('.clear-btn');
-    if (clearBtn) clearBtn.addEventListener('click', clearTable);
-    
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveToDatabase);
+        console.log('✅ Save button listener attached');
+    } else {
+        console.error('❌ Save button not found!');
+    }
+
     // Add sorting listeners
     document.querySelectorAll('.hamburger-btn').forEach(btn => {
         btn.addEventListener('click', function() {
@@ -49,8 +166,15 @@ function initializeTable() {
     //=================
     //LOAD DATA
     //=================
+    /*const loadBtn = document.getElementById('loadBtn');
 
-    loadFromDatabase();
+    if (loadBtn) {
+        loadBtn.addEventListener('click', loadUserData);
+        console.log('✅ Load button listener attached');
+    } 
+    else {
+        console.error('❌ Load button not found!');
+    }*/
     
     //============================
     //SORTING LISTENERS
@@ -62,6 +186,86 @@ function initializeTable() {
             toggleSortMenu(column);
         });
     });
+}
+//=========================
+//FONT STYLE AND SIZE
+//=========================
+
+let activeCell = null;
+
+document.getElementById('tableBody').addEventListener('click', (event) => {
+    const cell = event.target.closest('.cell');
+    if (cell && cell.isContentEditable) {
+        activeCell = cell;
+        cell.focus();
+    }
+});
+
+function changeFontStyle(selectElement) {
+    const selectedFont = selectElement.value;
+    const table = document.getElementById("excelTable");
+    if (table) {
+        table.style.fontFamily = selectedFont;
+    }
+}
+
+function changeFontSize(selectElement) {
+  const size = selectElement.value;
+  const table = document.getElementById("excelTable");
+  const tdata = document.getElementById("tableBody");
+  table.style.fontSize = size;
+  tdata.style.fontSize = size;
+
+  // Optional: apply to each <td> and <th>
+  const cells = table.querySelectorAll("td, th");
+  cells.forEach(cell => cell.style.fontSize = size);
+}
+
+let currentEditingCell = null;
+let redoStack = [];
+
+// Initialize the formatting system
+function initializeTextFormatting() {
+    console.log('Initializing text formatting...');
+    
+    
+    makeTableCellsEditable();
+    
+    setupFormattingButtons();
+    
+    setupKeyboardShortcuts();
+
+}
+
+// MAKE TABLE CELLS EDITABLE
+function makeTableCellsEditable() {
+    const tableBody = document.getElementById('tableBody');
+    if (!tableBody) {
+        console.error('Table body not found');
+        return;
+    }
+
+    // MAKE EXISTING TABLES EDITABLE 
+    const cells = tableBody.querySelectorAll('td');
+    cells.forEach(cell => {
+        setupCellEditing(cell);
+    });
+
+    //HANDLE DYNAMICALLY ADDED ROWS
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1 && node.tagName === 'TR') {
+                    const cells = node.querySelectorAll('td');
+                    cells.forEach(cell => {
+                        setupCellEditing(cell);
+                    });
+                }
+            });
+        });
+    });
+
+    observer.observe(tableBody, { childList: true, subtree: true });
 }
 
 //===========================
@@ -91,49 +295,30 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     });
 
-    // Handle dropdown item selection
-    dropdownItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault(); 
-            const selectedValue = item.textContent; 
-            entriesBtn.textContent = selectedValue; 
-            splitBtnContainer.classList.remove('active');
-            dropdownToggle.setAttribute('aria-expanded', 'false');
-            console.log(`Selected number of entries: ${selectedValue}`);
-        });
-    });
-
     document.addEventListener('click', (e) => {
         if (!splitBtnContainer.contains(e.target)) {
             splitBtnContainer.classList.remove('active');
             dropdownToggle.setAttribute('aria-expanded', 'false');
         }
     });
+
+    dropdownItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault(); 
+            const selectedValue = parseInt(item.textContent); 
+            entriesBtn.textContent = selectedValue; 
+            entriesPerPage = selectedValue;
+            currentPage = 1;
+            rebuildTable();
+            splitBtnContainer.classList.remove('active');
+            dropdownToggle.setAttribute('aria-expanded', 'false');
+            console.log(`Selected number of entries: ${selectedValue} entries`);
+        });
+    });
 });
+document.addEventListener('DOMContentLoaded', initializeTable);
 
-//=========================
-//FONT
-//=========================
 
-function changeFontStyle(selectElement) {
-    const selectedFont = selectElement.value;
-    const table = document.getElementById("excelTable");
-    if (table) {
-        table.style.fontFamily = selectedFont;
-    }
-}
-
-function changeFontSize(selectElement) {
-  const size = selectElement.value;
-  const table = document.getElementById("excelTable");
-  const tdata = document.getElementById("tableBody");
-  table.style.fontSize = size;
-  tdata.style.fontSize = size;
-
-  // Optional: apply to each <td> and <th>
-  const cells = table.querySelectorAll("td, th");
-  cells.forEach(cell => cell.style.fontSize = size);
-}
 
 /*
 const boldBtn = document.getElementById('bold');
@@ -160,62 +345,70 @@ underlineBtn.addEventListener('click', () => {
 
 //--------------------------UNDO REDO---------------------------------//
 
+//==================================================
+//FIND AND REPLACE
+//==================================================
 
-//------------------------FIND AND REPLACE---------------------------//
+// Select elements
+const findInput = document.querySelector('.find-box');
+const replaceInput = document.querySelector('.replace-box');
+const replaceBtn = document.querySelector('.replace-btn');
+const matchCounter = document.querySelector('.match-counter span');
+const tableBody = document.getElementById('tableBody');
 
-document.addEventListener('DOMContentLoaded', () => {
-    const findBox = document.querySelector('.find-box');
-    const replaceBox = document.querySelector('.replace-box');
-    const findBtn = document.querySelector('#findWord');
-    const replaceBtn = document.querySelector('#replaceWord');
-    const matchCounter = document.querySelector('.match-counter span');
-    const tableBody = document.getElementById('tableBody');
+// Function to get all cells
+function getCells() {
+    return tableBody.querySelectorAll('.cell');
+}
 
-    // Function to update match count
-    function updateMatchCount() {
-        const findText = findBox.value.trim();
-        if (!findText) {
-            matchCounter.textContent = '0';
-            return;
-        }
-        let matchCount = 0;
-        const cells = tableBody.querySelectorAll('td');
-        const regex = new RegExp(findText, 'gi');
-        cells.forEach(cell => {
-            const matches = cell.textContent.match(regex) || [];
-            matchCount += matches.length;
-        });
-        matchCounter.textContent = matchCount;
+// Find functionality - triggers as user types
+findInput.addEventListener('input', () => {
+    const searchTerm = findInput.value.trim().toLowerCase();
+    const cells = getCells();
+    
+    // If search term is empty, clear highlights and reset counter
+    if (!searchTerm) {
+        cells.forEach(cell => cell.classList.remove('highlight'));
+        matchCounter.textContent = '0';
+        return;
     }
-
-    // Find button event listener
-    findBtn.addEventListener('click', () => {
-        updateMatchCount();
+    
+    let matchCount = 0;
+    cells.forEach(cell => {
+        const text = cell.value.toLowerCase(); // Use value instead of textContent
+        if (text.includes(searchTerm)) {
+            cell.classList.add('highlight');
+            matchCount++;
+        } else {
+            cell.classList.remove('highlight');
+        }
     });
-
-    // Replace button event listener
-    replaceBtn.addEventListener('click', () => {
-        const findText = findBox.value.trim();
-        const replaceText = replaceBox.value;
-        if (!findText) return;
-
-        const regex = new RegExp(findText, 'g');
-        const cells = tableBody.querySelectorAll('td');
-        cells.forEach(cell => {
-            cell.textContent = cell.textContent.replace(regex, replaceText);
-        });
-        updateMatchCount();
-    });
-
-    // Update match count on input change
-    findBox.addEventListener('input', updateMatchCount);
+    matchCounter.textContent = matchCount;
 });
 
-//---------------------------------------------------------------------------//
-//---------------------------TABLE OPTIONS----------------------------------//
-//-------------------------------------------------------------------------//
+// Replace functionality - triggers on button click
+replaceBtn.addEventListener('click', () => {
+    const searchTerm = findInput.value.trim();
+    const replaceTerm = replaceInput.value;
+    if (!searchTerm) return; // Do nothing if no search term
+    
+    const cells = getCells();
+    cells.forEach(cell => {
+        if (cell.classList.contains('highlight')) {
+            const regex = new RegExp(searchTerm, 'gi'); // Case-insensitive replacement
+            cell.value = cell.value.replace(regex, replaceTerm); // Use value instead of textContent
+            cell.classList.remove('highlight');
+        }
+    });
+    matchCounter.textContent = '0'; // Reset counter after replacement
+});
 
-//----------------------Add New Row--------------------------------------//
+//====================================================
+//TABLE OPTIONS
+//====================================================
+
+
+//-------------------------------ADD NEW ROW--------------------------------------//
 
 function addNewRow() {
     rowCount++;
@@ -223,7 +416,7 @@ function addNewRow() {
     const row = document.createElement('tr');
     
     const rowData = {
-        serialNo: rowCount,
+        //serialNo: rowCount,
         date: '',
         toWhom: '',
         toWhomHindi: '',
@@ -235,12 +428,11 @@ function addNewRow() {
         sentByHindi: ''
     };
     tableData.push(rowData);
-
     row.innerHTML = `
         <td class="row-number">${rowCount}</td>
-        <td><input type="date" class="cell" required data-row="${rowCount-1}" data-field="date" placeholder="Enter date..."></td>
+        <td><input type="text" class="cell" required data-row="${rowCount-1}" data-field="date" placeholder="Enter date..."></td>
         <td>
-            <input id = "r1" type="text" class="cell english-cell" required data-row="${rowCount-1}" data-field="toWhom" placeholder="Enter recipient...">
+            <input id = "r1" type="text" class="cell english-cell" required data-row="${rowCount-1}" data-field="toWhom" placeholder="Enter recipient..." style = "word-wrap: break-word;">
             <input type="text" class="cell hindi-cell" data-row="${rowCount-1}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled>
         </td>
         <td>
@@ -255,6 +447,7 @@ function addNewRow() {
             <input type="text" class="cell english-cell" required data-row="${rowCount-1}" data-field="sentBy" placeholder="Mode of sending...">
             <input type="text" class="cell hindi-cell" data-row="${rowCount-1}" data-field="sentByHindi" placeholder="Hindi translation..." disabled>
         </td>
+     
     `;
 
     tbody.appendChild(row);
@@ -267,7 +460,7 @@ function addNewRow() {
     addRowInsertionListeners(row);
 }
 
-//------------------------------Move To Next Cell---------------------------------------------//
+//-------------------------------------MOVE TO NEXT CELL---------------------------------------------//
 
 function moveToNextCell(currentCell) {
     const allCells = document.querySelectorAll('.cell');
@@ -284,7 +477,7 @@ function moveToNextCell(currentCell) {
     }
 }
 
-//----------------------------------------Sort Column---------------------------------------------//
+//----------------------------------------SORT COLUMN---------------------------------------------//
 
 function sortColumn(field, order) {
     syncTableDataWithDOM();
@@ -294,8 +487,8 @@ function sortColumn(field, order) {
         let bValue = b[field] || '';
         
         if (field === 'date') {
-            aValue = new Date(aValue || '1900-01-01');
-            bValue = new Date(bValue || '1900-01-01');
+            aValue = parseDate(aValue);
+            bValue = parseDate(bValue);
         } else {
             aValue = aValue.toString().toLowerCase();
             bValue = bValue.toString().toLowerCase();
@@ -311,7 +504,7 @@ function sortColumn(field, order) {
     document.querySelectorAll('.sort-dropdown').forEach(d => d.classList.remove('show'));
 }
 
-//-------------------------------------Search Specific Column-----------------------------------------//
+//-------------------------------------SEARCH SPECIFIC COLUMN-----------------------------------------//
 
 function searchColumn(column) {
     const input = document.querySelector(`input[data-column="${column}"]`);
@@ -329,7 +522,7 @@ function searchColumn(column) {
     document.getElementById(`sort-${column}`).classList.remove('show');
 }
 
-//--------------------------------------Clear Column Search------------------------------------------//
+//--------------------------------------CLEAR COLUMN SEARCH-----------------------------------------//
 
 function clearColumnSearch(column) {
     const input = document.querySelector(`input[data-column="${column}"]`);
@@ -338,7 +531,7 @@ function clearColumnSearch(column) {
     applyAllFilters();
 }
 
-//----------------------------------- Apply All Active Filters--------------------------------------//
+//-------------------------------------APPLY ALL ACTIVE FILTERS--------------------------------------//
 
 function applyAllFilters() {
     const tbody = document.getElementById('tableBody');
@@ -391,31 +584,35 @@ function syncTableDataWithDOM() {
     });
 }
 
-//-----------------------------------Toggle Sort Menu-------------------------------------------//
+//------------------------------------------TOGGLE SORT MENU-------------------------------------------//
 
 function toggleSortMenu(column) {
     const dropdown = document.getElementById(`sort-${column}`);
+    
+    if (!dropdown) {
+        console.error(`Dropdown element with ID 'sort-${column}' not found.`);
+        return;
+    }
     
     // Close all other dropdowns
     document.querySelectorAll('.sort-dropdown').forEach(d => {
         if (d !== dropdown) d.classList.remove('show');
     });
-            
+    
     dropdown.classList.toggle('show');
     
     // Close dropdown when clicking outside
-        setTimeout(() => {
-            document.addEventListener('click', function closeDropdown(e) {
-                if (!dropdown.contains(e.target) && !e.target.closest('.hamburger-btn')) {
-                    dropdown.classList.remove('show');
-                    document.removeEventListener('click', closeDropdown);
-                }
-            });
-        }, 
-    0);
+    setTimeout(() => {
+        document.addEventListener('click', function closeDropdown(e) {
+            if (!dropdown.contains(e.target) && !e.target.closest('.hamburger-btn')) {
+                dropdown.classList.remove('show');
+                document.removeEventListener('click', closeDropdown);
+            }
+        });
+    }, 0);
 }
 
-// Setup row insertion
+//ROW INSERTION
 
 function setupRowInsertion() {
     const tbody = document.getElementById('tableBody');
@@ -425,7 +622,8 @@ function setupRowInsertion() {
     });
 }
 
-// Add row insertion listeners
+// ADD ROW LISTENERS
+
 function addRowInsertionListeners(row) {
     const insertBtn = document.createElement('div');
     insertBtn.className = 'insert-row-btn';
@@ -454,7 +652,11 @@ function addRowInsertionListeners(row) {
     });
 }
 
-// Insert row after specified row
+//======================================================
+//SMALL FEATURES
+//=====================================================
+
+// INSERT ROW AFTER ANOTHER ROW
 
 function insertRowAfter(targetRow) {
     const tbody = document.getElementById('tableBody');
@@ -464,7 +666,7 @@ function insertRowAfter(targetRow) {
     const newRow = document.createElement('tr');
     
     const rowData = {
-        serialNo: rowCount,
+        //serialNo: rowCount,
         date: '',
         toWhom: '',
         toWhomHindi: '',
@@ -479,7 +681,7 @@ function insertRowAfter(targetRow) {
     
     newRow.innerHTML = `
         <td class="row-number">${rowCount}</td>
-        <td><input type="date" class="cell" required data-row="${targetIndex + 1}" data-field="date" placeholder="dd-mm-yyyy"></td>
+        <td><input type="text" class="cell" required data-row="${targetIndex + 1}" data-field="date" placeholder="dd-mm-yyyy"></td>
         <td>
             <input type="text" class="cell english-cell" required data-row="${targetIndex + 1}" data-field="toWhom" placeholder="Enter recipient...">
             <input type="text" class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled>
@@ -510,23 +712,20 @@ function insertRowAfter(targetRow) {
     cells[0].focus();
 }
 
-// Update row numbers
+//UPDATE ROW NUMBERS
 function updateRowNumbers() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
-    
+    const startIdx = (currentPage - 1) * entriesPerPage;
     rows.forEach((row, index) => {
         const rowNumberCell = row.querySelector('.row-number');
-        rowNumberCell.textContent = index + 1;
-        
-        const cells = row.querySelectorAll('.cell');
-        cells.forEach(cell => {
-            cell.setAttribute('data-row', index);
-        });
+        if (rowNumberCell) {
+            rowNumberCell.textContent = startIdx + index + 1;
+        }
     });
 }
 
-// Show context menu
+//SHOW CONTEXT MENUS
 
 function showContextMenu(event, row) {
     const existingMenu = document.querySelector('.context-menu');
@@ -573,7 +772,7 @@ function showContextMenu(event, row) {
     });
 }
 
-// Insert row at index
+//INSERT ROW AT INDEX
 
 function insertRowAt(index) {
     const tbody = document.getElementById('tableBody');
@@ -582,7 +781,7 @@ function insertRowAt(index) {
     else insertRowAfter(rows[index - 1]);
 }
 
-// Insert row before target
+// INSERT ROW BEFORE TARGET
 
 function insertRowBefore(targetRow) {
     const tbody = document.getElementById('tableBody');
@@ -607,7 +806,7 @@ function insertRowBefore(targetRow) {
     
     newRow.innerHTML = `
         <td class="row-number">${rowCount}</td>
-        <td><input type="date" class="cell" required data-row="${targetIndex}" data-field="date" placeholder="Enter date..."></td>
+        <td><input type="text" class="cell" required data-row="${targetIndex}" data-field="date" placeholder="Enter date..."></td>
         <td>
             <input type="text" class="cell english-cell" required data-row="${targetIndex}" data-field="toWhom" placeholder="Enter recipient...">
             <input type="text" class="cell hindi-cell" data-row="${targetIndex}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled>
@@ -638,7 +837,7 @@ function insertRowBefore(targetRow) {
     cells[0].focus();
 }
 
-// Delete row
+//DELETE ROW
 
 function deleteRow(row, index) {
     const tbody = document.getElementById('tableBody');
@@ -653,9 +852,15 @@ function deleteRow(row, index) {
     rowCount--;
 }
 
-// Add cell event listeners
+//ADD CELL EVENT LISTENERS
 
 function addCellEventListeners(cell) {
+    if (cell.getAttribute('data-field') === 'date') {
+        cell.placeholder = 'dd/mm/yyyy';
+        cell.addEventListener('input', () => restrictDateInput(cell));
+        cell.addEventListener('blur', () => restrictDateInput(cell));  // Validate on blur too
+    }
+
     cell.addEventListener('focus', function() {
         this.classList.add('editing');
         this.select();
@@ -683,9 +888,6 @@ function addCellEventListeners(cell) {
 }
 
 //----------------------------------------------SAVE THINGY-------------------------------------------//
-
-// ADD THESE DATABASE FUNCTIONS TO YOUR EXISTING public/dak_despatch.js FILE
-// Add them at the end of your file, after all your existing functions
 
 //==============================================
 // DATABASE INTEGRATION FUNCTIONS
@@ -716,31 +918,57 @@ function validateRowData(rowData, rowIndex) {
 function getFilledRows() {
     const filledRows = [];
     const validationErrors = [];
+    let foundFirstEmpty = false; 
     
-    tableData.forEach((rowData, index) => {
-        // Check if at least one field is filled
-        const hasData = Object.values(rowData).some(value => 
-            value && value.toString().trim() !== '' && value !== index + 1
-        );
+        for (let index = 0; index < tableData.length; index++) {
+            const rowData = tableData[index];
+            // Check if at least one field is filled (excluding serialNo)
+            const hasData = Object.values(rowData).some(value =>
+                value && value.toString().trim() !== '' && value !== index + 1
+            );
         
-        if (hasData) {
-            const validation = validateRowData(rowData, index);
-            if (validation.isValid) {
-                filledRows.push({
-                    ...rowData,
-                    serialNo: index + 1
-                });
-            } else {
-                validationErrors.push(validation.error);
+            if (hasData) {
+                if (foundFirstEmpty) {
+                    validationErrors.push(
+                        `Row ${index}: Has empty fields. Please fill all required fields before Saving.` // rows in-between cannot be empty 
+                    );
+                }
+                const validation = validateRowData(rowData, index);
+                if (validation.isValid) {
+                    filledRows.push({
+                        ...rowData,
+                        serialNo: index + 1
+                    });
+                } else {
+                    validationErrors.push(validation.error);
+                }
+            }
+            else{
+                foundFirstEmpty = true; // mark that we found an empty row
             }
         }
-    });
-    
     return { filledRows, validationErrors };
 }
+//=============================
+//SAVE TO DATABASE
+//=============================
 
-// Save data to database
 async function saveToDatabase() {
+    // Check authentication first
+    if (!isAuthenticated()) {
+        alert('Please login first to save data.');
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // CONFIRM SAVING
+    const confirmSave = confirm('Are you sure you want to save the data? Double check before saving!');
+    if (!confirmSave) {
+        return;
+    }
+    
+    console.log('🔄 Save button clicked - starting save process...');
+    
     try {
         // Show loading state
         const saveBtn = document.querySelector('.save-btn');
@@ -748,14 +976,25 @@ async function saveToDatabase() {
         saveBtn.textContent = '⏳ Saving...';
         saveBtn.disabled = true;
         
+        console.log('📋 Current tableData:', tableData.length, 'rows');
+        
         // Sync table data with DOM first
         syncTableDataWithDOM();
+        console.log('✅ Table data synced with DOM');
         
         // Get filled and validated rows
         const { filledRows, validationErrors } = getFilledRows();
         
+        console.log('📊 Processed data:', {
+            totalRows: tableData.length,
+            filledRows: filledRows.length,
+            validationErrors: validationErrors.length,
+            filledData: filledRows
+        });
+        
         // If there are validation errors, show them and stop
         if (validationErrors.length > 0) {
+            console.warn('⚠️ Validation errors found:', validationErrors);
             alert('❌ Validation Errors:\n\n' + validationErrors.join('\n\n') + '\n\nPlease fill all required fields before saving.');
             saveBtn.textContent = originalText;
             saveBtn.disabled = false;
@@ -764,103 +1003,72 @@ async function saveToDatabase() {
         
         // If no filled rows, show message
         if (filledRows.length === 0) {
+            console.warn('⚠️ No filled rows found');
             alert('ℹ️ No data to save.\n\nPlease fill at least one complete row with all required fields:\n• Date\n• To Whom Sent\n• Place\n• Subject\n• Sent By');
             saveBtn.textContent = originalText;
             saveBtn.disabled = false;
             return;
         }
         
-        // Send data to backend
+        console.log('🚀 Sending authenticated data to server...');
+        
+        // Send data to backend with authentication headers
         const response = await fetch('/api/despatch/save', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getAuthToken()}`  // Add the token here
             },
             body: JSON.stringify({
                 data: filledRows
             })
         });
         
+        console.log('📡 Server response status:', response.status);
+        
+        // Handle authentication errors
+        if (response.status === 401 || response.status === 403) {
+            removeAuthToken();
+            alert('Session expired. Please login again.');
+            window.location.href = 'login.html';
+            return;
+        }
+        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
         
         const result = await response.json();
+        console.log('✅ Server response:', result);
         
         if (result.success) {
             saveBtn.textContent = '✅ Saved!';
             setTimeout(() => {
                 saveBtn.textContent = originalText;
             }, 3000);
-            alert(`✅ Successfully saved ${filledRows.length} rows to database!`);
+            alert(`✅ Successfully saved ${result.rowsSaved || filledRows.length} rows to database!`);
         } else {
             throw new Error(result.error || 'Failed to save data');
         }
         
     } catch (error) {
-        console.error('Save error:', error);
-        alert('❌ Error saving data:\n\n' + error.message + '\n\nPlease check your database connection and try again.');
+        console.error('❌ Save error:', error);
+        alert('❌ Error saving data:\n\n' + error.message + '\n\nPlease check:\n• Your internet connection\n• Server is running\n• Database connection\n• Browser console for more details');
     } finally {
         // Reset button state
         const saveBtn = document.querySelector('.save-btn');
         if (!saveBtn.textContent.includes('✅')) {
-            saveBtn.textContent = originalText || 'Save';
+            saveBtn.textContent = 'Save';
         }
         saveBtn.disabled = false;
     }
 }
 
-// Load data from database
-async function loadFromDatabase() {
-    try {
-        const response = await fetch('/api/despatch/load');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.success && result.data.length > 0) {
-            // Clear existing table
-            tableData = [];
-            rowCount = 0;
-            document.getElementById('tableBody').innerHTML = '';
-            
-            // Load data into table
-            result.data.forEach(rowData => {
-                rowCount++;
-                const processedData = {
-                    serialNo: rowCount,
-                    date: rowData.date || '',
-                    toWhom: rowData.eng_to_whom_sent || '',
-                    toWhomHindi: rowData.hi_to_whom_sent || '',
-                    place: rowData.eng_place || '',
-                    placeHindi: rowData.hi_place || '',
-                    subject: rowData.eng_subject || '',
-                    subjectHindi: rowData.hi_subject || '',
-                    sentBy: rowData.eng_sent_by || '',
-                    sentByHindi: rowData.hi_sent_by || ''
-                };
-                tableData.push(processedData);
-            });
-            
-            rebuildTable();
-            console.log(`✅ Loaded ${result.data.length} rows from database`);
-        } else {
-            console.log('No existing data found in database');
-        }
-        
-    } catch (error) {
-        console.error('Load error:', error);
-        // Don't show alert for load errors on page load - just log them
-        console.log('Could not load existing data - starting with empty table');
-    }
-}
 
-
-
-//----------------------------------------------TRANSLATION-------------------------------------------//
+//============================================
+//TRANSLATION
+//============================================
 
 async function translateText(text) {
     // Check cache first
@@ -869,6 +1077,7 @@ async function translateText(text) {
     }
     
     try {
+        //api key
         const response = await fetch("https://d-jaden02-en-hi-helsinki-model.hf.space/translate", {
             method: 'POST',
             headers: {
@@ -899,7 +1108,7 @@ async function translateText(text) {
     } 
 }
 
-// better performance
+//FASTER TRANSLATION ALT
 
 async function translateTextBatch(texts) {
     try {
@@ -943,7 +1152,7 @@ async function translateTextBatch(texts) {
     }
 }
 
-// Save data and handle translation
+//SAVE DATA AND HANDLE TRANSLATION
 
 async function saveData(cell) {
     const row = parseInt(cell.getAttribute('data-row'));
@@ -966,8 +1175,21 @@ async function saveData(cell) {
         }
     }
 }
+//================================
+// CONFIRM LOGOUT
+//================================
 
-
+document.addEventListener('DOMContentLoaded', function() {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to logout?Remember To Save')) {
+                window.location.href = 'login.html';
+            }
+        });
+    }
+});
 
 // View as PDF
 
@@ -999,48 +1221,101 @@ async function saveData(cell) {
             window.open(url);
         });
 }*/
+//=====================================
+// REBUILD DATA FOR NO OF ENTRIES
+//===================================== 
 
-// Rebuild table
 function rebuildTable() {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
-    
-    tableData.forEach((rowData, index) => {
+
+    // Ensure enough rows for the current page
+    const requiredRows = entriesPerPage * currentPage;
+    while (tableData.length < requiredRows) {
+        const rowData = {
+            date: '',
+            toWhom: '',
+            toWhomHindi: '',
+            place: '',
+            placeHindi: '',
+            subject: '',
+            subjectHindi: '',
+            sentBy: '',
+            sentByHindi: ''
+        };
+        tableData.push(rowData);
+    }
+
+    // PAGINATION LOGIC
+    const startIdx = (currentPage - 1) * entriesPerPage;
+    const endIdx = Math.min(startIdx + entriesPerPage, tableData.length);
+    const pageRows = tableData.slice(startIdx, endIdx);
+
+    pageRows.forEach((rowData, index) => {
+        const serialNumber = startIdx + index + 1; // Sequential number for current page
         const row = document.createElement('tr');
-        
         row.innerHTML = `
-            <td class="row-number">${index + 1}</td>
-            <td><input type="date" class="cell" required data-row="${index}" data-field="date" placeholder="Enter date..." value="${rowData.date || ''}"></td>
+            <td class="row-number">${serialNumber}</td>
+            <td><input type="text" class="cell" required data-row="${startIdx + index}" data-field="date" placeholder="Enter date..." value="${rowData.date || ''}"></td>
             <td>
-                <input type="text" class="cell english-cell" required data-row="${index}" data-field="toWhom" placeholder="Enter recipient..." value="${rowData.toWhom || ''}">
-                <input type="text" class="cell hindi-cell" data-row="${index}" data-field="toWhomHindi" placeholder="Hindi translation..." value="${rowData.toWhomHindi || ''}" ${rowData.toWhomHindi ? '' : 'disabled'}>
+                <input type="text" class="cell english-cell" required data-row="${startIdx + index}" data-field="toWhom" placeholder="Enter recipient..." value="${rowData.toWhom || ''}">
+                <input type="text" class="cell hindi-cell" data-row="${startIdx + index}" data-field="toWhomHindi" placeholder="Hindi translation..." value="${rowData.toWhomHindi || ''}" ${rowData.toWhomHindi ? '' : 'disabled'}>
             </td>
             <td>
-                <input type="text" class="cell english-cell" required data-row="${index}" data-field="place" placeholder="Enter place..." value="${rowData.place || ''}">
-                <input type="text" class="cell hindi-cell" data-row="${index}" data-field="placeHindi" placeholder="Hindi translation..." value="${rowData.placeHindi || ''}" ${rowData.placeHindi ? '' : 'disabled'}>
+                <input type="text" class="cell english-cell" required data-row="${startIdx + index}" data-field="place" placeholder="Enter place..." value="${rowData.place || ''}">
+                <input type="text" class="cell hindi-cell" data-row="${startIdx + index}" data-field="placeHindi" placeholder="Hindi translation..." value="${rowData.placeHindi || ''}" ${rowData.placeHindi ? '' : 'disabled'}>
             </td>
             <td>
-                <input type="text" class="cell english-cell" required data-row="${index}" data-field="subject" placeholder="Enter subject..." value="${rowData.subject || ''}">
-                <input type="text" class="cell hindi-cell" data-row="${index}" data-field="subjectHindi" placeholder="Hindi translation..." value="${rowData.subjectHindi || ''}" ${rowData.subjectHindi ? '' : 'disabled'}>
+                <input type="text" class="cell english-cell" required data-row="${startIdx + index}" data-field="subject" placeholder="Enter subject..." value="${rowData.subject || ''}">
+                <input type="text" class="cell hindi-cell" data-row="${startIdx + index}" data-field="subjectHindi" placeholder="Hindi translation..." value="${rowData.subjectHindi || ''}" ${rowData.subjectHindi ? '' : 'disabled'}>
             </td>
             <td>
-                <input type="text" class="cell english-cell" required data-row="${index}" data-field="sentBy" placeholder="Mode of sending..." value="${rowData.sentBy || ''}">
-                <input type="text" class="cell hindi-cell" data-row="${index}" data-field="sentByHindi" placeholder="Hindi translation..." value="${rowData.sentByHindi || ''}" ${rowData.sentByHindi ? '' : 'disabled'}>
+                <input type="text" class="cell english-cell" required data-row="${startIdx + index}" data-field="sentBy" placeholder="Mode of sending..." value="${rowData.sentBy || ''}">
+                <input type="text" class="cell hindi-cell" data-row="${startIdx + index}" data-field="sentByHindi" placeholder="Hindi translation..." value="${rowData.sentByHindi || ''}" ${rowData.sentByHindi ? '' : 'disabled'}>
             </td>
         `;
-        
         tbody.appendChild(row);
-        
+
         const cells = row.querySelectorAll('.cell');
         cells.forEach(cell => {
             addCellEventListeners(cell);
         });
-        
         addRowInsertionListeners(row);
     });
+
+    renderPaginationControls();
 }
+//==========================================================
+// PAGINATION CONTROLS FOR GOING FROM ONE PAGE TO ANOTHER
+//==========================================================
 
+function renderPaginationControls() {
+    let pagination = document.getElementById('pagination-controls');
+    if (!pagination) {
+        pagination = document.createElement('div');
+        pagination.id = 'pagination-controls';
+        pagination.style.margin = '10px 0';
+        pagination.style.textAlign = 'center';
+        document.getElementById('excelTable').after(pagination);
+    }
 
-// Initialize on load
+    const totalPages = Math.ceil(tableData.length / entriesPerPage);
+    pagination.innerHTML = `
+        <button ${currentPage === 1 ? 'disabled' : ''} id="prevPageBtn">Previous</button>
+        <span> Page ${currentPage} of ${totalPages} </span>
+        <button ${currentPage === totalPages ? 'disabled' : ''} id="nextPageBtn">Next</button>
+    `;
 
-window.addEventListener('load', initializeTable);
+    document.getElementById('prevPageBtn').onclick = () => {
+        if (currentPage > 1) {
+            currentPage--;
+            rebuildTable();
+        }
+    };
+    document.getElementById('nextPageBtn').onclick = () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            rebuildTable();
+        }
+    };
+}
