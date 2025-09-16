@@ -1,5 +1,6 @@
-////////////////////////////////////
-///////////////////////////////////
+//=========================
+//START
+//=========================
 
 let rowCount = 0;
 let tableData = [];
@@ -15,7 +16,68 @@ function debounce(func, wait) {
     };
 }
 
-// Initialize table
+//======================================
+//FLIPPING 
+//======================================
+
+function switchPage(targetPage) {
+    localStorage.setItem('flipTo', targetPage);
+    const flipContainer = document.getElementById('flipContainer');
+    flipContainer.classList.add('flip-out');
+    setTimeout(() => {
+        window.location.href = targetPage === 'despatch' ? 'dak_despatch.html' : 'dak_acquired.html';
+    }, 600); // Match animation duration
+}
+
+// On page load, check if flip-in animation should be applied
+window.addEventListener('load', () => {
+    const flipTo = localStorage.getItem('flipTo');
+    const currentPage = window.location.pathname.includes('dak_despatch.html') ? 'despatch' : 'acquired';
+    if (flipTo === currentPage) {
+        const flipContainer = document.getElementById('flipContainer');
+        flipContainer.classList.add('flip-in');
+        localStorage.removeItem('flipTo');
+    }
+});
+
+//========================================
+//MOBILE TOOLBAR
+//========================================
+function toggleMobileMenu() {
+    const toolbar = document.getElementById('toolbar');
+    toolbar.classList.toggle('active');
+}
+
+function toggleDropdown() {
+    const container = document.querySelector('.split-btn-container');
+    container.classList.toggle('active');
+}
+
+// Close mobile menu when clicking outside
+document.addEventListener('click', function(event) {
+    const toolbar = document.getElementById('toolbar');
+    const toggle = document.querySelector('.mobile-menu-toggle');
+    
+    // Check if elements exist before accessing their methods
+    if (toolbar && toggle && !toolbar.contains(event.target) && !toggle.contains(event.target)) {
+        toolbar.classList.remove('active');
+    }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const container = document.querySelector('.split-btn-container');
+    
+    // Check if element exists before accessing its methods
+    if (container && !container.contains(event.target)) {
+        container.classList.remove('active');
+    }
+});
+
+//==========================================
+//INITIALIZE TABLE
+//==========================================
+
 function initializeTable() {
     for (let i = 0; i < 6; i++) {
         addNewRow();
@@ -25,11 +87,16 @@ function initializeTable() {
     // Add event listeners with null checks
     const addRowBtn = document.querySelector('.add-row-btn');
     if (addRowBtn) addRowBtn.addEventListener('click', addNewRow);
-    const pdfBtn = document.querySelector('.pdf-btn');
-    if (pdfBtn) pdfBtn.addEventListener('click', viewPdf);
-    const searchBtn = document.querySelector('.search-button');
-    if (searchBtn) searchBtn.addEventListener('click', searchTable);
     
+    // NEW: Add save and load button listeners
+    const saveBtn = document.querySelector('.save-btn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveToDatabase);
+        console.log('✅ Save button listener attached');
+    } else {
+        console.error('❌ Save button not found!');
+    }
+
     // Add sorting listeners
     document.querySelectorAll('.hamburger-btn').forEach(btn => {
         btn.addEventListener('click', function() {
@@ -37,8 +104,176 @@ function initializeTable() {
             toggleSortMenu(column);
         });
     });
+
+    //=================
+    //LOAD DATA
+    //=================
+
+    //loadFromDatabase();
+    
+    //============================
+    //SORTING LISTENERS
+    //============================
+
+    document.querySelectorAll('.hamburger-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const column = this.parentElement.parentElement.parentElement.className;
+            toggleSortMenu(column);
+        });
+    });
 }
-//------------------------NEW--------//
+
+//=========================
+//FONT
+//=========================
+
+let activeCell = null;
+
+document.getElementById('tableBody').addEventListener('click', (event) => {
+    const cell = event.target.closest('.cell');
+    if (cell && cell.isContentEditable) {
+        activeCell = cell;
+        cell.focus();
+    }
+});
+
+function changeFontStyle(selectElement) {
+    const selectedFont = selectElement.value;
+    const table = document.getElementById("excelTable");
+    if (table) {
+        table.style.fontFamily = selectedFont;
+    }
+}
+
+function changeFontSize(selectElement) {
+  const size = selectElement.value;
+  const table = document.getElementById("excelTable");
+  const tdata = document.getElementById("tableBody");
+  table.style.fontSize = size;
+  tdata.style.fontSize = size;
+
+  // Optional: apply to each <td> and <th>
+  const cells = table.querySelectorAll("td, th");
+  cells.forEach(cell => cell.style.fontSize = size);
+}
+
+let currentEditingCell = null;
+let undoStack = [];
+let redoStack = [];
+let maxUndoSteps = 50;
+
+// Initialize the formatting system
+function initializeTextFormatting() {
+    console.log('Initializing text formatting...');
+    
+    
+    makeTableCellsEditable();
+    
+    
+    setupFormattingButtons();
+    
+    setupKeyboardShortcuts();
+
+    updateUndoRedoButtons();
+}
+
+// MAKE TABLE CELLS EDITABLE
+function makeTableCellsEditable() {
+    const tableBody = document.getElementById('tableBody');
+    if (!tableBody) {
+        console.error('Table body not found');
+        return;
+    }
+
+    // MAKE EXISTING TABLES EDITABLE 
+    const cells = tableBody.querySelectorAll('td');
+    cells.forEach(cell => {
+        setupCellEditing(cell);
+    });
+
+    //HANDLE DYNAMICALLY ADDED ROWS
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1 && node.tagName === 'TR') {
+                    const cells = node.querySelectorAll('td');
+                    cells.forEach(cell => {
+                        setupCellEditing(cell);
+                    });
+                }
+            });
+        });
+    });
+
+    observer.observe(tableBody, { childList: true, subtree: true });
+}
+
+// SETUP INDIVIDUAL EDITING CELLS
+function setupCellEditing(cell) {
+    cell.contentEditable = true;
+    cell.style.cursor = 'text';
+    
+    cell.addEventListener('focus', function(e) {
+        currentEditingCell = this;
+        saveUndoState();
+        console.log('Cell focused:', this);
+    });
+
+    cell.addEventListener('blur', function(e) {
+        currentEditingCell = null;
+        updateFormattingButtonStates();
+    });
+
+    cell.addEventListener('keyup', function(e) {
+        updateFormattingButtonStates();
+    });
+
+    cell.addEventListener('mouseup', function(e) {
+        updateFormattingButtonStates();
+    });
+}
+//==================================================
+//FIND AND REPLACE
+//==================================================
+
+// Select elements
+const findInput = document.querySelector('.find-box');
+const replaceInput = document.querySelector('.replace-box');
+const replaceBtn = document.querySelector('.replace-btn');
+const matchCounter = document.querySelector('.match-counter span');
+const tableBody = document.getElementById('tableBody');
+
+// Function to get all cells
+function getCells() {
+    return tableBody.querySelectorAll('.cell');
+}
+
+// Find functionality - triggers as user types
+findInput.addEventListener('input', () => {
+    const searchTerm = findInput.value.trim().toLowerCase();
+    const cells = getCells();
+    
+    // If search term is empty, clear highlights and reset counter
+    if (!searchTerm) {
+        cells.forEach(cell => cell.classList.remove('highlight'));
+        matchCounter.textContent = '0';
+        return;
+    }
+    
+    let matchCount = 0;
+    cells.forEach(cell => {
+        const text = cell.value.toLowerCase(); // Use value instead of textContent
+        if (text.includes(searchTerm)) {
+            cell.classList.add('highlight');
+            matchCount++;
+        } else {
+            cell.classList.remove('highlight');
+        }
+    });
+    matchCounter.textContent = matchCount;
+});
+
+//------------------------NEW-----------------------------------//
 document.addEventListener('DOMContentLoaded', () => {
     const dropdownToggle = document.querySelector('.dropdown-toggle');
     const splitBtnContainer = document.querySelector('.split-btn-container');
@@ -83,99 +318,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-//------------------------FIND AND REPLACE---------------------------//
 
-document.addEventListener('DOMContentLoaded', () => {
-    const findBox = document.querySelector('.find-box');
-    const replaceBox = document.querySelector('.replace-box');
-    const findBtn = document.querySelector('#findWord');
-    const replaceBtn = document.querySelector('#replaceWord');
-    const matchCounter = document.querySelector('.match-counter span');
-    const tableBody = document.getElementById('tableBody');
+//====================================================
+//TABLE OPTIONS
+//====================================================
 
-    // Function to update match count
-    function updateMatchCount() {
-        const findText = findBox.value.trim();
-        if (!findText) {
-            matchCounter.textContent = '0';
-            return;
-        }
-        let matchCount = 0;
-        const cells = tableBody.querySelectorAll('td');
-        const regex = new RegExp(findText, 'gi');
-        cells.forEach(cell => {
-            const matches = cell.textContent.match(regex) || [];
-            matchCount += matches.length;
-        });
-        matchCounter.textContent = matchCount;
-    }
+//-------------------------------ADD NEW ROW--------------------------------------//
 
-    // Find button event listener
-    findBtn.addEventListener('click', () => {
-        updateMatchCount();
-    });
-
-    // Replace button event listener
-    replaceBtn.addEventListener('click', () => {
-        const findText = findBox.value.trim();
-        const replaceText = replaceBox.value;
-        if (!findText) return;
-
-        const regex = new RegExp(findText, 'g');
-        const cells = tableBody.querySelectorAll('td');
-        cells.forEach(cell => {
-            cell.textContent = cell.textContent.replace(regex, replaceText);
-        });
-        updateMatchCount();
-    });
-
-    // Update match count on input change
-    findBox.addEventListener('input', updateMatchCount);
-});
-//---------FONT----------//
-
-function changeFontStyle(selectElement) {
-    const selectedFont = selectElement.value;
-    const table = document.getElementById("excelTable");
-    if (table) {
-        table.style.fontFamily = selectedFont;
-    }
-}
-
-function changeFontSize(selectElement) {
-  const size = selectElement.value;
-  const table = document.getElementById("excelTable");
-  const tdata = document.getElementById("tableBody");
-  table.style.fontSize = size;
-  tdata.style.fontSize = size;
-
-  // Optional: apply to each <td> and <th>
-  const cells = table.querySelectorAll("td, th");
-  cells.forEach(cell => cell.style.fontSize = size);
-}
-
-const boldBtn = document.getElementById('bold');
-const italicBtn = document.getElementById('italics');
-const underlineBtn = document.getElementById('underline');
-const tbody = document.getElementById('r1');
-
-
-boldBtn.addEventListener('click', () => {
-    document.execCommand('bold', false, null);
-    tbody.focus();
-});
-
-italicBtn.addEventListener('click', () => {
-    document.execCommand('italic', false, null);
-    tbody.focus();
-});
-
-underlineBtn.addEventListener('click', () => {
-    document.execCommand('underline', false, null);
-    tbody.focus();
-});
-
-//----------------------Add New Row--------------------------------------//
 function addNewRow() {
     rowCount++;
     const tbody = document.getElementById('tableBody');
@@ -184,14 +333,11 @@ function addNewRow() {
     const rowData = {
         serialNo: rowCount,
         date: '',
-        toWhom: '',
-        toWhomHindi: '',
-        place: '',
-        placeHindi: '',
+        redeivedFrom: '',
+        redeivedFromHindi: '',
+        letterNumber: '',
         subject: '',
         subjectHindi: '',
-        sentBy: '',
-        sentByHindi: ''
     };
     tableData.push(rowData);
 
@@ -204,7 +350,6 @@ function addNewRow() {
         </td>
         <td>
             <input type="text" class="cell english-cell" required data-row="${rowCount-1}" data-field="letterNumber" placeholder="Enter Letter Number...">
-            <input type="text" class="cell hindi-cell" data-row="${rowCount-1}" data-field="placeHindi" placeholder="Hindi translation..." disabled>
         </td>
         <td>
             <input type="text" class="cell english-cell" required data-row="${rowCount-1}" data-field="subject" placeholder="Enter subject...">
@@ -223,6 +368,108 @@ function addNewRow() {
     });
 
     addRowInsertionListeners(row);
+}
+
+//-------------------------------------MOVE TO NEXT CELL---------------------------------------------//
+
+function moveToNextCell(currentCell) {
+    const allCells = document.querySelectorAll('.cell');
+    const currentIndex = Array.from(allCells).indexOf(currentCell);
+    
+    if (currentIndex < allCells.length - 1) {
+        allCells[currentIndex + 1].focus();
+    } else {
+        addNewRow();
+        setTimeout(() => {
+            const newCells = document.querySelectorAll('.cell');
+            newCells[newCells.length - 10].focus();
+        }, 100);
+    }
+}
+
+//----------------------------------------SORT COLUMN---------------------------------------------//
+
+function sortColumn(field, order) {
+    syncTableDataWithDOM();
+    
+    tableData.sort((a, b) => {
+        let aValue = a[field] || '';
+        let bValue = b[field] || '';
+        
+        if (field === 'date') {
+            aValue = new Date(aValue || '1900-01-01');
+            bValue = new Date(bValue || '1900-01-01');
+        } else {
+            aValue = aValue.toString().toLowerCase();
+            bValue = bValue.toString().toLowerCase();
+        }
+        
+        return order === 'asc' ? 
+            (aValue > bValue ? 1 : -1) : 
+            (aValue < bValue ? 1 : -1);
+    });
+    
+    rebuildTable();
+    applyAllFilters();
+    document.querySelectorAll('.sort-dropdown').forEach(d => d.classList.remove('show'));
+}
+
+//-------------------------------------SEARCH SPECIFIC COLUMN-----------------------------------------//
+
+function searchColumn(column) {
+    const input = document.querySelector(`input[data-column="${column}"]`);
+    const searchTerm = input.value.toLowerCase().trim();
+    
+    if (searchTerm === '') {
+        clearColumnSearch(column);
+        return;
+    }
+    
+    columnFilters[column] = searchTerm;
+    applyAllFilters();
+    
+    
+    document.getElementById(`sort-${column}`).classList.remove('show');
+}
+
+//--------------------------------------CLEAR COLUMN SEARCH-----------------------------------------//
+
+function clearColumnSearch(column) {
+    const input = document.querySelector(`input[data-column="${column}"]`);
+    input.value = '';
+    delete columnFilters[column];
+    applyAllFilters();
+}
+
+//-------------------------------------APPLY ALL ACTIVE FILTERS--------------------------------------//
+
+function applyAllFilters() {
+    const tbody = document.getElementById('tableBody');
+    const rows = tbody.querySelectorAll('tr');
+    let visibleCount = 0;
+    
+    rows.forEach((row, index) => {
+        let showRow = true;
+        
+        for (const [column, searchTerm] of Object.entries(columnFilters)) {
+            const cellValue = getCellValueByColumn(row, column).toLowerCase();
+            if (!cellValue.includes(searchTerm)) {
+                showRow = false;
+                break;
+            }
+        }
+        
+        if (showRow) {
+            row.style.display = '';
+            row.classList.add('filtered-row');
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+            row.classList.remove('filtered-row');
+        }
+    });
+    
+    showNoResultsMessage(visibleCount === 0);
 }
 
 // Setup row insertion
@@ -263,7 +510,14 @@ function addRowInsertionListeners(row) {
     });
 }
 
-// Insert row after specified row
+
+
+//======================================================
+//SMALL FEATURES
+//=====================================================
+
+// INSERT ROW AFTER ANOTHER ROW
+
 function insertRowAfter(targetRow) {
     const tbody = document.getElementById('tableBody');
     const targetIndex = Array.from(tbody.children).indexOf(targetRow);
@@ -318,7 +572,8 @@ function insertRowAfter(targetRow) {
     cells[0].focus();
 }
 
-// Update row numbers
+//UPDATE ROW NUMBERS
+
 function updateRowNumbers() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
@@ -334,7 +589,8 @@ function updateRowNumbers() {
     });
 }
 
-// Show context menu
+//SHOW CONTEXT MENUS
+
 function showContextMenu(event, row) {
     const existingMenu = document.querySelector('.context-menu');
     if (existingMenu) existingMenu.remove();
@@ -380,7 +636,8 @@ function showContextMenu(event, row) {
     });
 }
 
-// Insert row at index
+//INSERT ROW AT INDEX
+
 function insertRowAt(index) {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
@@ -388,7 +645,8 @@ function insertRowAt(index) {
     else insertRowAfter(rows[index - 1]);
 }
 
-// Insert row before target
+// INSERT ROW BEFORE TARGET
+
 function insertRowBefore(targetRow) {
     const tbody = document.getElementById('tableBody');
     const targetIndex = Array.from(tbody.children).indexOf(targetRow);
@@ -443,7 +701,8 @@ function insertRowBefore(targetRow) {
     cells[0].focus();
 }
 
-// Delete row
+//DELETE ROW
+
 function deleteRow(row, index) {
     const tbody = document.getElementById('tableBody');
     if (tbody.children.length <= 1) {
@@ -457,7 +716,8 @@ function deleteRow(row, index) {
     rowCount--;
 }
 
-// Add cell event listeners
+//ADD CELL EVENT LISTENERS
+
 function addCellEventListeners(cell) {
     cell.addEventListener('focus', function() {
         this.classList.add('editing');
@@ -485,30 +745,156 @@ function addCellEventListeners(cell) {
     }, 300)); // Debounce input by 300ms
 }
 
-// Save data and handle translation
-async function saveData(cell) {
-    const row = parseInt(cell.getAttribute('data-row'));
-    const field = cell.getAttribute('data-field');
-    const value = cell.value;
+//==============================================
+// DATABASE INTEGRATION FUNCTIONS
+//==============================================
 
-    if (tableData[row]) {
-        tableData[row][field] = value;
+// Validate row data - checks if all required fields are filled
 
-        // Handle automatic translation
-        if (translatableColumns.includes(field) && !field.endsWith('Hindi') && value) {
-            const hindiField = `${field}Hindi`;
-            const hindiInput = document.querySelector(`input[data-row="${row}"][data-field="${hindiField}"]`);
-            if (hindiInput) {
-                const translatedText = await translateText(value);
-                hindiInput.value = translatedText;
-                hindiInput.disabled = false; // Enable Hindi field after translation
-                tableData[row][hindiField] = translatedText;
+function validateRowData(rowData, rowIndex) {
+    const requiredFields = ['date', 'toWhom', 'place', 'subject', 'sentBy'];
+    const missingFields = [];
+    
+    for (const field of requiredFields) {
+        if (!rowData[field] || rowData[field].trim() === '') {
+            missingFields.push(field);
+        }
+    }
+    
+    if (missingFields.length > 0) {
+        return {
+            isValid: false, 
+            error: `Row ${rowIndex + 1}: Missing required fields - ${missingFields.join(', ')}`
+        };
+    }
+    
+    return { isValid: true };
+}
+
+// Get filled rows from table data
+function getFilledRows() {
+    const filledRows = [];
+    const validationErrors = [];
+    
+    tableData.forEach((rowData, index) => {
+        // Check if at least one field is filled
+        const hasData = Object.values(rowData).some(value => 
+            value && value.toString().trim() !== '' && value !== index + 1
+        );
+        
+        if (hasData) {
+            const validation = validateRowData(rowData, index);
+            if (validation.isValid) {
+                filledRows.push({
+                    ...rowData,
+                    serialNo: index + 1
+                });
+            } else {
+                validationErrors.push(validation.error);
             }
         }
+    });
+    
+    return { filledRows, validationErrors };
+}
+//=============================
+//SAVE TO DATABASE
+//=============================
+
+async function saveToDatabase() {
+    console.log('🔄 Save button clicked - starting save process...');
+    
+    try {
+        // Show loading state
+        const saveBtn = document.querySelector('.save-btn');
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = '⏳ Saving...';
+        saveBtn.disabled = true;
+        
+        console.log('📋 Current tableData:', tableData.length, 'rows');
+        
+        // Sync table data with DOM first
+        syncTableDataWithDOM();
+        console.log('✅ Table data synced with DOM');
+        
+        // Get filled and validated rows
+        const { filledRows, validationErrors } = getFilledRows();
+        
+        console.log('📊 Processed data:', {
+            totalRows: tableData.length,
+            filledRows: filledRows.length,
+            validationErrors: validationErrors.length,
+            filledData: filledRows
+        });
+        
+        // If there are validation errors, show them and stop
+        if (validationErrors.length > 0) {
+            console.warn('⚠️ Validation errors found:', validationErrors);
+            alert('❌ Validation Errors:\n\n' + validationErrors.join('\n\n') + '\n\nPlease fill all required fields before saving.');
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+            return;
+        }
+        
+        // If no filled rows, show message
+        if (filledRows.length === 0) {
+            console.warn('⚠️ No filled rows found');
+            alert('ℹ️ No data to save.\n\nPlease fill at least one complete row with all required fields:\n• Date\n• To Whom Sent\n• Place\n• Subject\n• Sent By');
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+            return;
+        }
+        
+        console.log('🚀 Sending data to server...');
+        
+        // Send data to backend
+        const response = await fetch('/api/despatch/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                data: filledRows
+            })
+        });
+        
+        console.log('📡 Server response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Server response:', result);
+        
+        if (result.success) {
+            saveBtn.textContent = '✅ Saved!';
+            setTimeout(() => {
+                saveBtn.textContent = originalText;
+            }, 3000);
+            alert(`✅ Successfully saved ${result.rowsSaved || filledRows.length} rows to database!`);
+        } else {
+            throw new Error(result.error || 'Failed to save data');
+        }
+        
+    } catch (error) {
+        console.error('❌ Save error:', error);
+        alert('❌ Error saving data:\n\n' + error.message + '\n\nPlease check:\n• Your internet connection\n• Server is running\n• Database connection\n• Browser console for more details');
+    } finally {
+        // Reset button state
+        const saveBtn = document.querySelector('.save-btn');
+        if (!saveBtn.textContent.includes('✅')) {
+            saveBtn.textContent = 'Save';
+        }
+        saveBtn.disabled = false;
     }
 }
 
-//---TRANSLATION-----
+//============================================
+//TRANSLATION
+//============================================
+
 async function translateText(text) {
     // Check cache first
     if (translationCache.has(text)) {
@@ -547,7 +933,8 @@ async function translateText(text) {
     } 
 }
 
-// Optional: Batch translation function for better performance
+//FASTER TRANSLATION ALT
+
 async function translateTextBatch(texts) {
     try {
         const response = await fetch("https://d-jaden02-en-hi-helsinki-model.hf.space/batch_translate", {
@@ -589,22 +976,30 @@ async function translateTextBatch(texts) {
         return fallback;
     }
 }
+//SAVE DATA AND HANDLE TRANSLATION
 
-// Move to next cell
-function moveToNextCell(currentCell) {
-    const allCells = document.querySelectorAll('.cell');
-    const currentIndex = Array.from(allCells).indexOf(currentCell);
-    
-    if (currentIndex < allCells.length - 1) {
-        allCells[currentIndex + 1].focus();
-    } else {
-        addNewRow();
-        setTimeout(() => {
-            const newCells = document.querySelectorAll('.cell');
-            newCells[newCells.length - 10].focus();
-        }, 100);
+async function saveData(cell) {
+    const row = parseInt(cell.getAttribute('data-row'));
+    const field = cell.getAttribute('data-field');
+    const value = cell.value;
+
+    if (tableData[row]) {
+        tableData[row][field] = value;
+
+        // Handle automatic translation
+        if (translatableColumns.includes(field) && !field.endsWith('Hindi') && value) {
+            const hindiField = `${field}Hindi`;
+            const hindiInput = document.querySelector(`input[data-row="${row}"][data-field="${hindiField}"]`);
+            if (hindiInput) {
+                const translatedText = await translateText(value);
+                hindiInput.value = translatedText;
+                hindiInput.disabled = false; 
+                tableData[row][hindiField] = translatedText;
+            }
+        }
     }
 }
+
 
 // View as PDF
 
