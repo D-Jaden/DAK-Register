@@ -1,16 +1,63 @@
-// routes/despatchRoutes.js - Database Routes for Despatch Operations
+//===============================
+//DESPATCH ROUTES
+//===============================
 
+//================
+//VARIABLES
+//================
+
+require('@dotenvx/dotenvx').config();
+const session = require('express-session');
 const express = require('express');
 const router = express.Router();
-const pool = require('/home/jaden-d-syiem/DAK Register /utils/db.js'); 
+const pool = require('../utils/db.js'); //change to (./utils/db.js) if error occurs)
+
+const JWT = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET;
+
+function authenticateJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+        const token = authHeader.split(' ')[1];
+        JWT.verify(token, JWT_SECRET, (err, user) => {
+            if (err) return res.status(403).json({ error: 'Invalid token' });
+            req.user = user;
+            next();
+        });
+    } else {
+        res.status(401).json({ error: 'No token provided' });
+    }
+}
+
+//FORMATTING DATE FOR POSTGRES
+function formatDateForPostgres(dateStr) {
+    if (!dateStr) return null;
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) {
+        throw new Error(`Invalid date format: ${dateStr}. Expected dd/mm/yyyy.`);
+    }
+    const day = parts[0].padStart(2, '0');
+    const month = parts[1].padStart(2, '0');
+    const year = parts[2];
+    return `${year}-${month}-${day}`;
+}
 
 // Save despatch data to database
-router.post('/save', async (req, res) => {
+router.post('/save', authenticateJWT, async (req, res) => {
     const client = await pool.connect();
     
     try {
         const { data } = req.body;
-        
+    
+        const userId = req.user ? req.user.user_id : null;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                error: 'Unauthorized: Please log in first'
+            });
+        }
+
+        // Validate input
         if (!data || !Array.isArray(data) || data.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -18,12 +65,15 @@ router.post('/save', async (req, res) => {
             });
         }
         
+        console.log(`📝 User ${userId} attempting to save ${data.length} rows`);
+        
         await client.query('BEGIN');
         
-        // Clear existing data (remove this line if you want to append instead of replace)
-        await client.query('DELETE FROM public.despatch');
+        //=======================
+        // INSERT DATA
+        //=======================
         
-        // Insert new data
+        let savedCount = 0;
         for (const row of data) {
             const query = `
                 INSERT INTO public.despatch (
@@ -36,13 +86,14 @@ router.post('/save', async (req, res) => {
                     eng_subject, 
                     hi_subject, 
                     eng_sent_by, 
-                    hi_sent_by
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                    hi_sent_by,
+                    user_id
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             `;
-            
+            const pgDate = formatDateForPostgres(row.date);
             const values = [
                 row.serialNo || null,
-                row.date || null,
+                pgDate,
                 row.toWhom || null,
                 row.toWhomHindi || null,
                 row.place || null,
@@ -50,20 +101,21 @@ router.post('/save', async (req, res) => {
                 row.subject || null,
                 row.subjectHindi || null,
                 row.sentBy || null,
-                row.sentByHindi || null
+                row.sentByHindi || null,
+                userId // Fixed: was 'userid' before
             ];
             
             await client.query(query, values);
+            savedCount++;
         }
         
         await client.query('COMMIT');
-        
-        console.log(`✅ Successfully saved ${data.length} rows to database`);
+        console.log(`✅ User ${userId} successfully saved ${savedCount} rows`);
         
         res.json({
             success: true,
-            message: `Successfully saved ${data.length} rows`,
-            rowsSaved: data.length
+            message: `Successfully saved ${savedCount} rows`,
+            rowsSaved: savedCount
         });
         
     } catch (error) {
@@ -78,67 +130,24 @@ router.post('/save', async (req, res) => {
     }
 });
 
-// Load despatch data from database
-router.get('/load', async (req, res) => {
+//======================================
+// Load DESPATCH DATA FROM DATABASE
+//======================================
+
+router.get('/load', authenticateJWT, async (req, res) => {
     try {
-        const query = `
-            SELECT 
-                serial_no,
-                date,
-                eng_to_whom_sent,
-                hi_to_whom_sent,
-                eng_place,
-                hi_place,
-                eng_subject,
-                hi_subject,
-                eng_sent_by,
-                hi_sent_by
-            FROM public.despatch 
-            ORDER BY serial_no ASC
-        `;
-        
-        const result = await pool.query(query);
-        
-        console.log(`✅ Loaded ${result.rows.length} rows from database`);
+        const userId = req.user.user_id;
+        const result = await pool.query(
+            'SELECT * FROM public.despatch WHERE user_id = $1 ORDER BY serial_no',
+            [userId]
+        );
         
         res.json({
             success: true,
-            data: result.rows,
-            count: result.rows.length
+            data: result.rows
         });
-        
     } catch (error) {
         console.error('❌ Database load error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Database error: ' + error.message
-        });
-    }
-});
-
-// Delete specific row by serial number
-router.delete('/delete/:serialNo', async (req, res) => {
-    try {
-        const { serialNo } = req.params;
-        
-        const query = 'DELETE FROM public.despatch WHERE serial_no = $1';
-        const result = await pool.query(query, [serialNo]);
-        
-        if (result.rowCount > 0) {
-            console.log(`✅ Deleted row with serial number ${serialNo}`);
-            res.json({
-                success: true,
-                message: `Deleted row with serial number ${serialNo}`
-            });
-        } else {
-            res.status(404).json({
-                success: false,
-                error: 'Row not found'
-            });
-        }
-        
-    } catch (error) {
-        console.error('❌ Database delete error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
