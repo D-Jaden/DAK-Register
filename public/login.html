@@ -43,73 +43,84 @@
                 <span class="slider"></span>
             </label>
         </div>
-   
-                <!--------------------------------------LOGIN BOX--------------------------------------->
-                <div class="login-box" id="login-box">
-                    <form id="form" action="/">
-                        <div class="outer-box">
-                            <h2>Log In</h2>
-                            <div class="input-box">
-                                <input type="text" id="loginphoneNo" name="phone-number" placeholder="Phone Number" onkeyup="validNumber(this.value)" autocomplete="off">
-                                <i class='bx bx-phone'></i>
-                            </div>
 
-                            <div class="below">
-                                <div class="log-btn">
-                                    <button role="button" onclick = "comparePhoneNo()">LOG IN</button>
+        <div class="flip-container" id="flipContainer">
+            <div class="flipper">
+                <div class="front">
+                    <!--------------------------------------LOGIN BOX--------------------------------------->
+                    <div class="login-box" id="login-box">
+                        <form id="form" action="/">
+                            <div class="outer-box">
+                                <h2>Log In</h2>
+                                <div class="input-box">
+                                    <input type="text" id="loginphoneNo" name="phone-number" placeholder="Phone Number" onkeyup="validNumber(this.value)" onkeypress="return (event.charCode > 47 && event.charCode < 58)" autocomplete="off">
+                                    <i class='bx bx-phone'></i>
+                                </div>
+
+                                <div class="below">
+                                    <div class="log-btn">
+                                        <button role="button" onclick = "comparePhoneNo()">LOG IN</button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
-            
-                <!------------------------------------------------REGISTER----------------------------------------------->
-                <div class="register-box" id="register-box">
-                    <form id="form">
-                        <div class="reg-box">
-                            <h2>Sign Up</h2>
-                            <div class="input-box">
-                                <input type="text" id="Fname" name="name" placeholder="First Name" onkeypress="return (event.charCode > 64 && event.charCode < 91) || (event.charCode > 96 && event.charCode < 123)" autocomplete="off" required>
-                                <box-icon name='face' color='#ffffff'></box-icon>
-                            </div>
-                            <div class="input-box">
-                                <input type="text" id="Lname" name="name" placeholder="Last Name" onkeypress="return (event.charCode > 64 && event.charCode < 91) || (event.charCode > 96 && event.charCode < 123)"autocomplete="off" required>
-                                <box-icon name='face' color='#ffffff'></box-icon>
-                            </div>
-                            <div class="input-box">
-                                <input type="text" id="registerphoneNo" name="phone-number" placeholder="Phone Number" onkeypress="return (event.charCode > 47 && event.charCode < 58)" autocomplete="off" required>
-                                <span id = "message"></span>
-                                <i class='bx bx-phone'></i>
-                            </div>
-                        
-                            <div class="input-box">
-                                <div class="cap-in">
-                                    <i class='bx bx-ghost'></i>
-                                    <input type="text" id="captchaInput" placeholder="Enter Captcha" required>
-                                    <img src="images/captcha.png" alt="Captcha" class="captcha-image" width = "30" height = "30">
-                                    <b><div id="captcha-text" class="captcha-image"></div></b>
+              
+           
+                <div class="back">
+                    <!------------------------------------------------REGISTER----------------------------------------------->
+                    <div class="register-box" id="register-box">
+                        <form id="form">
+                            <div class="reg-box">
+                                <h2>Sign Up</h2>
+                                <div class="input-box">
+                                    <input type="text" id="Fname" name="name" placeholder="First Name" onkeypress="return (event.charCode > 64 && event.charCode < 91) || (event.charCode > 96 && event.charCode < 123)" autocomplete="off" required>
+                                    <box-icon name='face' color='#ffffff'></box-icon>
+                                </div>
+                                <div class="input-box">
+                                    <input type="text" id="Lname" name="name" placeholder="Last Name" onkeypress="return (event.charCode > 64 && event.charCode < 91) || (event.charCode > 96 && event.charCode < 123)"autocomplete="off" required>
+                                    <box-icon name='face' color='#ffffff'></box-icon>
+                                </div>
+                                <div class="input-box">
+                                    <input type="text" id="registerphoneNo" name="phone-number" placeholder="Phone Number" onkeypress="return (event.charCode > 47 && event.charCode < 58)" autocomplete="off" required>
+                                    <span id = "message"></span>
+                                    <i class='bx bx-phone'></i>
+                                </div>
+                            
+                                <div class="input-box">
+                                    <div class="cap-in">
+                                        <i class='bx bx-ghost'></i>
+                                        <input type="text" id="captchaInput" placeholder="Enter Captcha" required>
+                                        <img src="images/captcha.png" alt="Captcha" class="captcha-image" width = "30" height = "30">
+                                        <b><div id="captcha-text" class="captcha-image"></div></b>
+                                    </div>
+                                </div>
+                            
+                                <div class = "checkbox">
+                                    <input type = "checkbox" id ="agreement">
+                                    <label><b>I Agree To The Terms & Conditions</b></label>
+                                </div>
+                            
+                                <div class="below">
+                                    <div class="reg-btn">
+                                        <button type = "submit" id="signupButton" disabled>SIGN UP</button>
+                                    </div>
                                 </div>
                             </div>
-                        
-                            <div class = "checkbox">
-                                <input type = "checkbox" id ="agreement">
-                                <label><b>I Agree To The Terms & Conditions</b></label>
-                            </div>
-                        
-                            <div class="below">
-                                <div class="reg-btn">
-                                    <button type = "submit">SIGN UP</button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
+             </div>
+        </div> 
         <!--------------------------------------------------BOTTOM BAR------------------------------------------------->
 
         <div class = "bottom-column">
-            <h3 style ="color: white;">Copyright © 2025, Designed, Developed & Hosted By <b>National Informatics Center, Meghalaya State Center Shillong</b></h3>
+            <h3 style ="color: white;">Copyright © 2025, Designed, Developed & Hosted By National Informatics Center, Meghalaya State Center Shillong</h3>
         </div>
         
     </div>
 </body>
-</html><script src="login.js"></script>
+<script src="auth.js"></script>
+<script src="login.js"></script>
+</html>
