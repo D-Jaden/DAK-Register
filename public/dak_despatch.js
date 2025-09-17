@@ -9,6 +9,34 @@ let currentPage = 1;
 const translatableColumns = ['toWhom', 'place', 'subject', 'sentBy'];
 let translationCache = new Map();
 
+let originalData = new Map();
+let changedRows = new Set(); 
+let newRows = new Set(); 
+
+//======================================
+//UTILITY FUNCTIONS FOR DATA HANDLING
+//======================================
+
+function deepClone(obj) {
+    return JSON.parse(JSON.stringify(obj));
+}
+
+// Create a hash of row data for comparison
+function createRowHash(rowData) {
+    const relevantData = {
+        date: rowData.date || '',
+        toWhom: rowData.toWhom || '',
+        toWhomHindi: rowData.toWhomHindi || '',
+        place: rowData.place || '',
+        placeHindi: rowData.placeHindi || '',
+        subject: rowData.subject || '',
+        subjectHindi: rowData.subjectHindi || '',
+        sentBy: rowData.sentBy || '',
+        sentByHindi: rowData.sentByHindi || ''
+    };
+    return JSON.stringify(relevantData);
+}
+
 // Debounce utility
 function debounce(func, wait) {
     let timeout;
@@ -136,17 +164,32 @@ function parseDate(dateStr) {
 //INITIALIZE TABLE
 //==========================================
 function initializeTable() {
-    for (let i = 0; i < 6; i++) {
-        addNewRow();
+    // Check if we should load user data after login
+    const shouldLoadUserData = localStorage.getItem('shouldLoadUserData');
+    
+    if (shouldLoadUserData === 'true') {
+        // Clear the flag
+        localStorage.removeItem('shouldLoadUserData');
+        
+        // Load user data instead of initializing empty table
+        console.log('🔄 Auto-loading user data after login...');
+        loadUserData();
+    } else {
+        // Normal initialization with empty rows
+        console.log('📝 Initializing with empty rows...');
+        for (let i = 0; i < 6; i++) {
+            addNewRow();
+        }
+        rebuildTable();
     }
-    rebuildTable();
+    
     setupRowInsertion();
     
     // Add event listeners with null checks
     const addRowBtn = document.querySelector('.add-row-btn');
     if (addRowBtn) addRowBtn.addEventListener('click', addNewRow);
  
-    // NEW: Add save and load button listeners
+    // Save button listener
     const saveBtn = document.querySelector('.save-btn');
     if (saveBtn) {
         saveBtn.addEventListener('click', saveToDatabase);
@@ -154,14 +197,6 @@ function initializeTable() {
     } else {
         console.error('❌ Save button not found!');
     }
-
-    // Add sorting listeners
-    document.querySelectorAll('.hamburger-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const column = this.parentElement.parentElement.parentElement.className;
-            toggleSortMenu(column);
-        });
-    });
     
     //=================
     //LOAD DATA
@@ -652,6 +687,94 @@ function addRowInsertionListeners(row) {
     });
 }
 
+//============================================
+// LOAD USER DATA ON LOGIN
+//============================================
+
+async function loadUserData() {
+    if (!isAuthenticated()) {
+        console.log('User not authenticated, skipping data load');
+        return;
+    }
+
+    try {
+        console.log('📥 Loading user data...');
+        
+        const response = await fetch('/api/despatch/load', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getAuthToken()}`
+            }
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            removeAuthToken();
+            alert('Session expired. Please login again.');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success && result.data && result.data.length > 0) {
+            console.log(`📊 Loaded ${result.data.length} existing records`);
+            
+            // Store original data for comparison
+            originalData.clear();
+            changedRows.clear();
+            newRows.clear();
+            
+            // Process loaded data
+            tableData = result.data.map((row, index) => {
+                // Store original data hash
+                originalData.set(index, createRowHash(row));
+                
+                return {
+                    id: row.id, // Database ID
+                    serialNo: row.serialNo || index + 1,
+                    date: row.date || '',
+                    toWhom: row.toWhom || '',
+                    toWhomHindi: row.toWhomHindi || '',
+                    place: row.place || '',
+                    placeHindi: row.placeHindi || '',
+                    subject: row.subject || '',
+                    subjectHindi: row.subjectHindi || '',
+                    sentBy: row.sentBy || '',
+                    sentByHindi: row.sentByHindi || '',
+                    isFromDatabase: true,
+                    hasChanges: false
+                };
+            });
+
+            // Update row count
+            rowCount = tableData.length;
+            
+            // Rebuild table with loaded data
+            rebuildTable();
+            
+            console.log('✅ User data loaded and displayed');
+            
+            // Show success message
+            showNotification(`Loaded ${result.data.length} existing records`, 'success');
+            
+        } else {
+            console.log('📭 No existing data found for user');
+            // Initialize with empty rows as usual
+            initializeTable();
+        }
+        
+    } catch (error) {
+        console.error('❌ Error loading user data:', error);
+        // Don't show error to user, just initialize normally
+        initializeTable();
+    }
+}
+
 //======================================================
 //SMALL FEATURES
 //=====================================================
@@ -954,112 +1077,137 @@ function getFilledRows() {
 //=============================
 
 async function saveToDatabase() {
-    // Check authentication first
     if (!isAuthenticated()) {
         alert('Please login first to save data.');
         window.location.href = 'login.html';
         return;
     }
 
-    // CONFIRM SAVING
-    const confirmSave = confirm('Are you sure you want to save the data? Double check before saving!');
-    if (!confirmSave) {
+    // Sync table data with DOM first
+    syncTableDataWithDOM();
+
+    // Get only changed and new rows
+    const changedRowsData = [];
+    const newRowsData = [];
+    
+    changedRows.forEach(rowIndex => {
+        if (tableData[rowIndex]) {
+            const rowData = tableData[rowIndex];
+            if (hasRequiredFields(rowData)) {
+                changedRowsData.push({
+                    ...rowData,
+                    serialNo: rowIndex + 1,
+                    operation: 'update'
+                });
+            }
+        }
+    });
+    
+    newRows.forEach(rowIndex => {
+        if (tableData[rowIndex]) {
+            const rowData = tableData[rowIndex];
+            if (hasRequiredFields(rowData)) {
+                newRowsData.push({
+                    ...rowData,
+                    serialNo: rowIndex + 1,
+                    operation: 'insert'
+                });
+            }
+        }
+    });
+
+    const totalChanges = changedRowsData.length + newRowsData.length;
+    
+    if (totalChanges === 0) {
+        alert('No changes to save.');
         return;
     }
-    
-    console.log('🔄 Save button clicked - starting save process...');
+
+    const confirmMessage = `Save ${totalChanges} changes?\n\n` +
+        `• ${newRowsData.length} new rows\n` +
+        `• ${changedRowsData.length} modified rows`;
+        
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
+    console.log(`🔄 Saving ${totalChanges} changed rows...`);
     
     try {
-        // Show loading state
         const saveBtn = document.querySelector('.save-btn');
         const originalText = saveBtn.textContent;
-        saveBtn.textContent = '⏳ Saving...';
+        saveBtn.textContent = '⏳ Saving Changes...';
         saveBtn.disabled = true;
-        
-        console.log('📋 Current tableData:', tableData.length, 'rows');
-        
-        // Sync table data with DOM first
-        syncTableDataWithDOM();
-        console.log('✅ Table data synced with DOM');
-        
-        // Get filled and validated rows
-        const { filledRows, validationErrors } = getFilledRows();
-        
-        console.log('📊 Processed data:', {
-            totalRows: tableData.length,
-            filledRows: filledRows.length,
-            validationErrors: validationErrors.length,
-            filledData: filledRows
-        });
-        
-        // If there are validation errors, show them and stop
-        if (validationErrors.length > 0) {
-            console.warn('⚠️ Validation errors found:', validationErrors);
-            alert('❌ Validation Errors:\n\n' + validationErrors.join('\n\n') + '\n\nPlease fill all required fields before saving.');
-            saveBtn.textContent = originalText;
-            saveBtn.disabled = false;
-            return;
-        }
-        
-        // If no filled rows, show message
-        if (filledRows.length === 0) {
-            console.warn('⚠️ No filled rows found');
-            alert('ℹ️ No data to save.\n\nPlease fill at least one complete row with all required fields:\n• Date\n• To Whom Sent\n• Place\n• Subject\n• Sent By');
-            saveBtn.textContent = originalText;
-            saveBtn.disabled = false;
-            return;
-        }
-        
-        console.log('🚀 Sending authenticated data to server...');
-        
-        // Send data to backend with authentication headers
-        const response = await fetch('/api/despatch/save', {
+
+        const response = await fetch('/api/despatch/save-changes', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${getAuthToken()}`  // Add the token here
+                'Authorization': `Bearer ${getAuthToken()}`
             },
             body: JSON.stringify({
-                data: filledRows
+                changedRows: changedRowsData,
+                newRows: newRowsData
             })
         });
-        
-        console.log('📡 Server response status:', response.status);
-        
-        // Handle authentication errors
+
         if (response.status === 401 || response.status === 403) {
             removeAuthToken();
             alert('Session expired. Please login again.');
             window.location.href = 'login.html';
             return;
         }
-        
+
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
-        
+
         const result = await response.json();
-        console.log('✅ Server response:', result);
         
         if (result.success) {
-            saveBtn.textContent = '✅ Saved!';
+            // Update tracking after successful save
+            changedRows.forEach(rowIndex => {
+                if (tableData[rowIndex]) {
+                    originalData.set(rowIndex, createRowHash(tableData[rowIndex]));
+                    tableData[rowIndex].hasChanges = false;
+                }
+            });
+            
+            newRows.forEach(rowIndex => {
+                if (tableData[rowIndex] && result.newRowIds && result.newRowIds[rowIndex]) {
+                    tableData[rowIndex].id = result.newRowIds[rowIndex];
+                    tableData[rowIndex].isFromDatabase = true;
+                    originalData.set(rowIndex, createRowHash(tableData[rowIndex]));
+                }
+            });
+            
+            changedRows.clear();
+            newRows.clear();
+            
+            // Update visual indicators
+            document.querySelectorAll('.row-changed, .row-new').forEach(row => {
+                row.classList.remove('row-changed', 'row-new');
+            });
+            
+            saveBtn.textContent = '✅ Changes Saved!';
             setTimeout(() => {
                 saveBtn.textContent = originalText;
             }, 3000);
-            alert(`✅ Successfully saved ${result.rowsSaved || filledRows.length} rows to database!`);
+            
+            showNotification(`Successfully saved ${totalChanges} changes`, 'success');
+            
         } else {
-            throw new Error(result.error || 'Failed to save data');
+            throw new Error(result.error || 'Failed to save changes');
         }
         
     } catch (error) {
         console.error('❌ Save error:', error);
-        alert('❌ Error saving data:\n\n' + error.message + '\n\nPlease check:\n• Your internet connection\n• Server is running\n• Database connection\n• Browser console for more details');
+        alert('❌ Error saving changes: ' + error.message);
     } finally {
-        // Reset button state
         const saveBtn = document.querySelector('.save-btn');
         if (!saveBtn.textContent.includes('✅')) {
-            saveBtn.textContent = 'Save';
+            saveBtn.textContent = 'Save Changes';
         }
         saveBtn.disabled = false;
     }
@@ -1077,7 +1225,6 @@ async function translateText(text) {
     }
     
     try {
-        //api key
         const response = await fetch("https://d-jaden02-en-hi-helsinki-model.hf.space/translate", {
             method: 'POST',
             headers: {
@@ -1103,9 +1250,10 @@ async function translateText(text) {
             throw new Error(data.error || 'Invalid response from translation API');
         }
     } catch (error) {
-        console.error('Translation error:', error);
+        console.warn('Translation API unavailable, skipping translation:', error.message);
+        // Return original text instead of failing
         return text;
-    } 
+    }
 }
 
 //FASTER TRANSLATION ALT
@@ -1160,9 +1308,28 @@ async function saveData(cell) {
     const value = cell.value;
 
     if (tableData[row]) {
+        const oldValue = tableData[row][field];
         tableData[row][field] = value;
 
-        // Handle automatic translation
+        // Check if this is a change from original data
+        if (tableData[row].isFromDatabase) {
+            const currentHash = createRowHash(tableData[row]);
+            const originalHash = originalData.get(row);
+            
+            if (currentHash !== originalHash) {
+                changedRows.add(row);
+                tableData[row].hasChanges = true;
+                console.log(`📝 Row ${row + 1} marked as changed`);
+            } else {
+                changedRows.delete(row);
+                tableData[row].hasChanges = false;
+            }
+        } else {
+            // This is a new row
+            newRows.add(row);
+        }
+
+        // Handle automatic translation (existing logic)
         if (translatableColumns.includes(field) && !field.endsWith('Hindi') && value) {
             const hindiField = `${field}Hindi`;
             const hindiInput = document.querySelector(`input[data-row="${row}"][data-field="${hindiField}"]`);
@@ -1171,10 +1338,51 @@ async function saveData(cell) {
                 hindiInput.value = translatedText;
                 hindiInput.disabled = false; 
                 tableData[row][hindiField] = translatedText;
+                
+                // Re-check for changes after translation
+                if (tableData[row].isFromDatabase) {
+                    const currentHash = createRowHash(tableData[row]);
+                    const originalHash = originalData.get(row);
+                    
+                    if (currentHash !== originalHash) {
+                        changedRows.add(row);
+                        tableData[row].hasChanges = true;
+                    }
+                }
             }
+        }
+        
+        // Visual indicator for changed rows
+        updateRowVisualStatus(row);
+    }
+}
+
+//============================================
+// VISUAL INDICATORS FOR CHANGED ROWS
+//============================================
+
+function updateRowVisualStatus(rowIndex) {
+    const tbody = document.getElementById('tableBody');
+    const rows = tbody.querySelectorAll('tr');
+    const startIdx = (currentPage - 1) * entriesPerPage;
+    const tableRowIndex = rowIndex - startIdx;
+    
+    if (rows[tableRowIndex]) {
+        const row = rows[tableRowIndex];
+        
+        if (changedRows.has(rowIndex)) {
+            row.classList.add('row-changed');
+            row.title = 'This row has been modified';
+        } else if (newRows.has(rowIndex)) {
+            row.classList.add('row-new');
+            row.title = 'This is a new row';
+        } else {
+            row.classList.remove('row-changed', 'row-new');
+            row.title = '';
         }
     }
 }
+
 //================================
 // CONFIRM LOGOUT
 //================================
@@ -1285,6 +1493,56 @@ function rebuildTable() {
 
     renderPaginationControls();
 }
+
+//============================================
+// HELPER FUNCTIONS
+//============================================
+
+function hasRequiredFields(rowData) {
+    const requiredFields = ['date', 'toWhom', 'place', 'subject', 'sentBy'];
+    return requiredFields.every(field => 
+        rowData[field] && rowData[field].toString().trim() !== ''
+    );
+}
+
+function showNotification(message, type = 'info') {
+    // Create notification element if it doesn't exist
+    let notification = document.getElementById('notification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'notification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        document.body.appendChild(notification);
+    }
+    
+    // Set color based on type
+    const colors = {
+        success: '#4CAF50',
+        error: '#f44336',
+        info: '#2196F3'
+    };
+    
+    notification.style.backgroundColor = colors[type] || colors.info;
+    notification.textContent = message;
+    notification.style.opacity = '1';
+    
+    // Hide after 3 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+    }, 3000);
+}
+
 //==========================================================
 // PAGINATION CONTROLS FOR GOING FROM ONE PAGE TO ANOTHER
 //==========================================================
