@@ -102,6 +102,8 @@ async function comparePhoneNo() {
             console.log('Token stored successfully');
             
             alert('Number verified - Welcome back!');
+            // Set flag to load data after redirect
+            localStorage.setItem('shouldLoadUserData', 'true');
             window.location.href = '/dak_despatch.html';
         } else {
             alert('Incorrect number: ' + (data.error || 'User not found'));
