@@ -1083,6 +1083,60 @@ body {
     transform: translateY(0);
 }
 
+.row-changed {
+    background-color: #fff3cd !important;
+    border-left: 4px solid #ffc107;
+}
+
+.row-new {
+    background-color: #d4edda !important;
+    border-left: 4px solid #28a745;
+}
+
+.row-changed td {
+    position: relative;
+}
+
+.row-new td {
+    position: relative;
+}
+
+/* Add indicator icons */
+.row-changed td:first-child::before {
+    content: "✏️";
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+}
+
+.row-new td:first-child::before {
+    content: "✨";
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+}
+
+/* Status indicator in save button */
+.save-btn.has-changes {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.save-btn.has-changes::after {
+    content: " (" attr(data-changes) ")";
+    font-size: 12px;
+}
+
+/* Notification styles */
+#notification {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 6px;
+}
+
 /*---------------------------------RESPONSIVENESS----------------------------*/
 @media (max-width: 768px) {
     .container {
