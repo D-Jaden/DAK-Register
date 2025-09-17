@@ -10,7 +10,7 @@ require('@dotenvx/dotenvx').config();
 const session = require('express-session');
 const express = require('express');
 const router = express.Router();
-const pool = require('../utils/db.js'); //change to (./utils/db.js) if error occurs)
+const pool = require('../utils/db.js');
 
 const JWT = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -42,14 +42,24 @@ function formatDateForPostgres(dateStr) {
     return `${year}-${month}-${day}`;
 }
 
-// Save despatch data to database
+// Helper function to format date for frontend (dd/mm/yyyy)
+function formatDateForFrontend(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+// Save despatch data to database (EXISTING ROUTE - KEEP THIS)
 router.post('/save', authenticateJWT, async (req, res) => {
     const client = await pool.connect();
     
     try {
         const { data } = req.body;
-    
         const userId = req.user ? req.user.user_id : null;
+        
         if (!userId) {
             return res.status(401).json({
                 success: false,
@@ -57,7 +67,6 @@ router.post('/save', authenticateJWT, async (req, res) => {
             });
         }
 
-        // Validate input
         if (!data || !Array.isArray(data) || data.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -69,14 +78,10 @@ router.post('/save', authenticateJWT, async (req, res) => {
         
         await client.query('BEGIN');
         
-        //=======================
-        // INSERT DATA
-        //=======================
-        
         let savedCount = 0;
         for (const row of data) {
             const query = `
-                INSERT INTO public.despatch (
+                INSERT INTO despatch (
                     serial_no, 
                     date, 
                     eng_to_whom_sent, 
@@ -102,7 +107,7 @@ router.post('/save', authenticateJWT, async (req, res) => {
                 row.subjectHindi || null,
                 row.sentBy || null,
                 row.sentByHindi || null,
-                userId // Fixed: was 'userid' before
+                userId
             ];
             
             await client.query(query, values);
@@ -131,27 +136,204 @@ router.post('/save', authenticateJWT, async (req, res) => {
 });
 
 //======================================
-// Load DESPATCH DATA FROM DATABASE
+// NEW ROUTES 
 //======================================
 
+// Load user's existing data
 router.get('/load', authenticateJWT, async (req, res) => {
     try {
         const userId = req.user.user_id;
+        console.log(`📥 Loading data for user ${userId}`);
+        
         const result = await pool.query(
-            'SELECT * FROM public.despatch WHERE user_id = $1 ORDER BY serial_no',
+            `SELECT 
+                id,
+                serial_no, 
+                date, 
+                eng_to_whom_sent, 
+                hi_to_whom_sent, 
+                eng_place, 
+                hi_place, 
+                eng_subject, 
+                hi_subject, 
+                eng_sent_by, 
+                hi_sent_by,
+                created_at,
+                updated_at
+            FROM despatch 
+            WHERE user_id = $1 
+            ORDER BY serial_no ASC`,
             [userId]
         );
         
+        console.log(`📊 Found ${result.rows.length} records for user ${userId}`);
+        
+        const transformedData = result.rows.map(row => ({
+            id: row.id,
+            serialNo: row.serial_no,
+            date: formatDateForFrontend(row.date),
+            toWhom: row.eng_to_whom_sent || '',
+            toWhomHindi: row.hi_to_whom_sent || '',
+            place: row.eng_place || '',
+            placeHindi: row.hi_place || '',
+            subject: row.eng_subject || '',
+            subjectHindi: row.hi_subject || '',
+            sentBy: row.eng_sent_by || '',
+            sentByHindi: row.hi_sent_by || '',
+            isFromDatabase: true,
+            hasChanges: false
+        }));
+        
         res.json({
             success: true,
-            data: result.rows
+            data: transformedData,
+            message: `Loaded ${result.rows.length} records`
         });
+        
     } catch (error) {
         console.error('❌ Database load error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
         });
+    }
+
+    const allData = await pool.query(
+            `SELECT * FROM despatch WHERE user_id = $1 ORDER BY serial_no ASC`,
+            [userId]
+    );
+});
+
+// Save only changed/new rows (optimized save)
+router.post('/save-changes', authenticateJWT, async (req, res) => {
+    const client = await pool.connect();
+    
+    try {
+        const { changedRows, newRows } = req.body;
+        const userId = req.user.user_id;
+        
+        console.log(`🔄 User ${userId} saving optimized changes:`, {
+            changedRows: changedRows.length,
+            newRows: newRows.length
+        });
+
+        await client.query('BEGIN');
+        
+        let updatedCount = 0;
+        let insertedCount = 0;
+        const newRowIds = {};
+
+        // Update existing rows
+        if (changedRows && changedRows.length > 0) {
+            for (const row of changedRows) {
+                const updateQuery = `
+                    UPDATE despatch SET
+                        date = $1,
+                        eng_to_whom_sent = $2,
+                        hi_to_whom_sent = $3,
+                        eng_place = $4,
+                        hi_place = $5,
+                        eng_subject = $6,
+                        hi_subject = $7,
+                        eng_sent_by = $8,
+                        hi_sent_by = $9,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = $10 AND user_id = $11
+                `;
+                
+                const pgDate = formatDateForPostgres(row.date);
+                const updateValues = [
+                    pgDate,
+                    row.toWhom || null,
+                    row.toWhomHindi || null,
+                    row.place || null,
+                    row.placeHindi || null,
+                    row.subject || null,
+                    row.subjectHindi || null,
+                    row.sentBy || null,
+                    row.sentByHindi || null,
+                    row.id,
+                    userId
+                ];
+                
+                const result = await client.query(updateQuery, updateValues);
+                if (result.rowCount > 0) {
+                    updatedCount++;
+                } else {
+                    console.warn(`⚠️ No rows updated for ID ${row.id}`);
+                }
+            }
+        }
+
+        // Insert new rows
+        if (newRows && newRows.length > 0) {
+            for (const row of newRows) {
+                const insertQuery = `
+                    INSERT INTO despatch (
+                        serial_no,
+                        date,
+                        eng_to_whom_sent,
+                        hi_to_whom_sent,
+                        eng_place,
+                        hi_place,
+                        eng_subject,
+                        hi_subject,
+                        eng_sent_by,
+                        hi_sent_by,
+                        user_id,
+                        created_at,
+                        updated_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    RETURNING id
+                `;
+                
+                const pgDate = formatDateForPostgres(row.date);
+                const insertValues = [
+                    row.serialNo,
+                    pgDate,
+                    row.toWhom || null,
+                    row.toWhomHindi || null,
+                    row.place || null,
+                    row.placeHindi || null,
+                    row.subject || null,
+                    row.subjectHindi || null,
+                    row.sentBy || null,
+                    row.sentByHindi || null,
+                    userId
+                ];
+                
+                const result = await client.query(insertQuery, insertValues);
+                if (result.rows.length > 0) {
+                    const newId = result.rows[0].id;
+                    newRowIds[row.serialNo - 1] = newId;
+                    insertedCount++;
+                }
+            }
+        }
+
+        await client.query('COMMIT');
+        
+        const totalOperations = updatedCount + insertedCount;
+        console.log(`✅ User ${userId} optimization complete: ${updatedCount} updated, ${insertedCount} inserted`);
+        
+        res.json({
+            success: true,
+            message: `Successfully saved ${totalOperations} changes`,
+            updatedCount,
+            insertedCount,
+            newRowIds,
+            totalChanges: totalOperations
+        });
+        
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('❌ Optimized save error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Database error: ' + error.message
+        });
+    } finally {
+        client.release();
     }
 });
 
