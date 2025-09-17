@@ -198,10 +198,6 @@ router.get('/load', authenticateJWT, async (req, res) => {
         });
     }
 
-    const allData = await pool.query(
-            `SELECT * FROM despatch WHERE user_id = $1 ORDER BY serial_no ASC`,
-            [userId]
-    );
 });
 
 // Save only changed/new rows (optimized save)
