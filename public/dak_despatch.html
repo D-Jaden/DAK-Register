@@ -98,7 +98,7 @@
                         </div>
                         <div class="search-container">
                             <div class = "pdf">
-                                <button class = "pdf-btn" id = "pdfView">View as PDF</button>
+                                <button class = "pdf-btn" onclick="exportToPDF()">View as PDF</button>
                             </div>
                             <div class="split-btn-container">
                                 <button class="entries-btn">No Of Entries</button>
@@ -129,121 +129,130 @@
                                     <span>Serial No</span>
                                 </div>
                             </th> 
+                            <!-- =========  1. DATE  ========= -->
                             <th class="date">
-                                <div class="column-header">
-                                    <span>Date</span>
-                                    <div class="hamburger-menu">
-                                        <button class="hamburger-btn" onclick="toggleSortMenu('date')">☰</button>
-                                        <div class="sort-dropdown" id="sort-date">
-                                            <div class="dropdown-section">
-                                                <div class="dropdown-header">Sort</div>
-                                                <div class="sort-option" data-order="asc" onclick="sortColumn('date', 'asc')">Sort Ascending</div>
-                                                <div class="sort-option" data-order="desc" onclick="sortColumn('date', 'desc')">Sort Descending</div>
-                                            </div>
-                                            <div class="dropdown-section">
-                                                <div class="dropdown-header">Search</div>
-                                                <input type="text" class="column-search-input" placeholder="dd/mm/yyyy" data-column="date" oninput="restrictDateInput(this)">
-                                                <div class="search-actions">
-                                                    <button class="search-btn" onclick="searchColumn('date')">Filter</button>
-                                                    <button class="search-btn clear" onclick="clearColumnSearch('date')">Clear</button>
-                                                </div>
-                                            </div>
-                                        </div>
+                              <div class="column-header">
+                                <span>Date</span>
+                                <div class="hamburger-menu">
+                                  <button class="hamburger-btn">☰</button>
+                                  <div class="sort-dropdown" id="sort-date">
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Sort</div>
+                                      <div class="sort-option" data-order="asc" onclick="sortColumn('date','asc')">Sort Ascending</div>
+                                      <div class="sort-option" data-order="desc" onclick="sortColumn('date','desc')">Sort Descending</div>
                                     </div>
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Search</div>
+                                      <input type="text" class="column-search-input" placeholder="dd/mm/yyyy" data-column="date" oninput="restrictDateInput(this)">
+                                      <div class="search-actions">
+                                        <button class="search-btn" onclick="searchColumn('date')">Filter</button>
+                                        <button class="search-btn clear" onclick="clearColumnSearch('date')">Clear</button>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
+                              </div>
                             </th>
+
+                            <!-- =========  2. TO WHOM SENT ========= -->
                             <th class="whomSent">
-                                <div class="column-header">
-                                    <span>To Whom Sent</span>
-                                    <div class="hamburger-menu">
-                                        <button class="hamburger-btn" onclick="toggleSortMenu('toWhom')">☰</button>
-                                        <div class="sort-dropdown" id="sort-toWhom">
-                                            <div class="dropdown-section">
-                                                <div class="dropdown-header">Sort</div>
-                                                <div class="sort-option" data-order="asc" onclick="sortColumn('toWhom', 'asc')">Sort Ascending</div>
-                                                <div class="sort-option" data-order="desc" onclick="sortColumn('toWhom', 'desc')">Sort Descending</div>
-                                            </div>
-                                            <div class="dropdown-section">
-                                                <div class="dropdown-header">Search</div>
-                                                <input type="text" class="column-search-input" placeholder="Search recipients..." data-column="toWhom">
-                                                <div class="search-actions">
-                                                    <button class="search-btn" onclick="searchColumn('toWhom')">Filter</button>
-                                                    <button class="search-btn clear" onclick="clearColumnSearch('toWhom')">Clear</button>
-                                                </div>
-                                            </div>
-                                        </div>
+                              <div class="column-header">
+                                <span>To Whom Sent</span>
+                                <div class="hamburger-menu">
+                                  <button class="hamburger-btn">☰</button>
+                                  <div class="sort-dropdown" id="sort-toWhom">
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Sort</div>
+                                      <div class="sort-option" data-order="asc" onclick="sortColumn('toWhom','asc')">Sort Ascending</div>
+                                      <div class="sort-option" data-order="desc" onclick="sortColumn('toWhom','desc')">Sort Descending</div>
                                     </div>
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Search</div>
+                                      <input type="text" class="column-search-input" placeholder="Search recipients..." data-column="toWhom">
+                                      <div class="search-actions">
+                                        <button class="search-btn" onclick="searchColumn('toWhom')">Filter</button>
+                                        <button class="search-btn clear" onclick="clearColumnSearch('toWhom')">Clear</button>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                            </th> 
+                              </div>
+                            </th>
+
+                            <!-- =========  3. PLACE  ========= -->
                             <th class="place">
-                                <div class="column-header">
-                                    <span>Place</span>
-                                    <div class="hamburger-menu">
-                                        <button class="hamburger-btn" onclick="toggleSortMenu('place')">☰</button>
-                                        <div class="sort-dropdown" id="sort-place">
-                                            <div class="dropdown-section">
-                                                <div class="dropdown-header">Sort</div>
-                                                <div class="sort-option" data-order="asc" onclick="sortColumn('place', 'asc')">Sort Ascending</div>
-                                                <div class="sort-option" data-order="desc" onclick="sortColumn('place', 'desc')">Sort Descending</div>
-                                            </div>
-                                            <div class="dropdown-section">
-                                                <div class="dropdown-header">Search</div>
-                                                <input type="text" class="column-search-input" placeholder="Search places..." data-column="place">
-                                                <div class="search-actions">
-                                                    <button class="search-btn" onclick="searchColumn('place')">Filter</button>
-                                                    <button class="search-btn clear" onclick="clearColumnSearch('place')">Clear</button>
-                                                </div>
-                                            </div>
-                                        </div>
+                              <div class="column-header">
+                                <span>Place</span>
+                                <div class="hamburger-menu">
+                                  <button class="hamburger-btn">☰</button>
+                                  <div class="sort-dropdown" id="sort-place">
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Sort</div>
+                                      <div class="sort-option" data-order="asc" onclick="sortColumn('place','asc')">Sort Ascending</div>
+                                      <div class="sort-option" data-order="desc" onclick="sortColumn('place','desc')">Sort Descending</div>
                                     </div>
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Search</div>
+                                      <input type="text" class="column-search-input" placeholder="Search places..." data-column="place">
+                                      <div class="search-actions">
+                                        <button class="search-btn" onclick="searchColumn('place')">Filter</button>
+                                        <button class="search-btn clear" onclick="clearColumnSearch('place')">Clear</button>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                            </th> 
+                              </div>
+                            </th>
+
+                            <!-- =========  4. SUBJECT  ========= -->
                             <th class="subject">
-                                <div class="column-header">
-                                    <span>Subject</span>
-                                    <div class="hamburger-menu">
-                                        <button class="hamburger-btn" onclick="toggleSortMenu('subject')">☰</button>
-                                        <div class="sort-dropdown" id="sort-subject">
-                                            <div class="dropdown-section">
-                                                <div class="dropdown-header">Sort</div>
-                                                <div class="sort-option" data-order="asc" onclick="sortColumn('subject', 'asc')">Sort Ascending</div>
-                                                <div class="sort-option" data-order="desc" onclick="sortColumn('subject', 'desc')">Sort Descending</div>
-                                            </div>
-                                            <div class="dropdown-section">
-                                                <div class="dropdown-header">Search</div>
-                                                <input type="text" class="column-search-input" placeholder="Search subjects..." data-column="subject">
-                                                <div class="search-actions">
-                                                    <button class="search-btn" onclick="searchColumn('subject')">Filter</button>
-                                                    <button class="search-btn clear" onclick="clearColumnSearch('subject')">Clear</button>
-                                                </div>
-                                            </div>
-                                        </div>
+                              <div class="column-header">
+                                <span>Subject</span>
+                                <div class="hamburger-menu">
+                                  <button class="hamburger-btn">☰</button>
+                                  <div class="sort-dropdown" id="sort-subject">
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Sort</div>
+                                      <div class="sort-option" data-order="asc" onclick="sortColumn('subject','asc')">Sort Ascending</div>
+                                      <div class="sort-option" data-order="desc" onclick="sortColumn('subject','desc')">Sort Descending</div>
                                     </div>
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Search</div>
+                                      <input type="text" class="column-search-input" placeholder="Search subjects..." data-column="subject">
+                                      <div class="search-actions">
+                                        <button class="search-btn" onclick="searchColumn('subject')">Filter</button>
+                                        <button class="search-btn clear" onclick="clearColumnSearch('subject')">Clear</button>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                            </th> 
+                              </div>
+                            </th>
+
+                            <!-- =========  5. SENT BY  ========= -->
                             <th class="sentBy">
-                                <div class="column-header">
-                                    <span>Sent By</span>
-                                    <div class="hamburger-menu">
-                                        <button class="hamburger-btn" onclick="toggleSortMenu('sentBy')">☰</button>
-                                        <div class="sort-dropdown" id="sort-sentBy">
-                                            <div class="dropdown-section">
-                                                <div class="dropdown-header">Sort</div>
-                                                <div class="sort-option" data-order="asc" onclick="sortColumn('sentBy', 'asc')">Sort Ascending</div>
-                                                <div class="sort-option" data-order="desc" onclick="sortColumn('sentBy', 'desc')">Sort Descending</div>
-                                            </div>
-                                            <div class="dropdown-section">
-                                                <div class="dropdown-header">Search</div>
-                                                <input type="text" class="column-search-input" placeholder="Search sent by..." data-column="sentBy">
-                                                <div class="search-actions">
-                                                    <button class="search-btn" onclick="searchColumn('sentBy')">Filter</button>
-                                                    <button class="search-btn clear" onclick="clearColumnSearch('sentBy')">Clear</button>
-                                                </div>
-                                            </div>
-                                        </div>
+                              <div class="column-header">
+                                <span>Sent By</span>
+                                <div class="hamburger-menu">
+                                  <button class="hamburger-btn">☰</button>
+                                  <div class="sort-dropdown" id="sort-sentBy">
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Sort</div>
+                                      <div class="sort-option" data-order="asc" onclick="sortColumn('sentBy','asc')">Sort Ascending</div>
+                                      <div class="sort-option" data-order="desc" onclick="sortColumn('sentBy','desc')">Sort Descending</div>
                                     </div>
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Search</div>
+                                      <input type="text" class="column-search-input" placeholder="Search sent by..." data-column="sentBy">
+                                      <div class="search-actions">
+                                        <button class="search-btn" onclick="searchColumn('sentBy')">Filter</button>
+                                        <button class="search-btn clear" onclick="clearColumnSearch('sentBy')">Clear</button>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                            </th> 
+                              </div>
+                            </th>
                         </tr>
                     </thead>
 
@@ -256,7 +265,7 @@
                 <div class = "button-container"> 
                     <button class="add-row-btn" onclick="addNewRow()">+ Add New Row</button>
                     <button class = "save-btn">Save</button>
-                    <button class = "load-btn" id = "loadBtn">Load</button>
+                    <!--<button class = "load-btn" id = "loadBtn">Load</button>-->
                     <button class = "switch-btn" onclick="switchPage('acquired')">Switch
                         <span class = "hidden-text"> ⓘ Switch To DAK Acquired</span>
                     </button>
