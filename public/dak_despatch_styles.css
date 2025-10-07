@@ -993,7 +993,7 @@ body {
 .save-btn:active {
     transform: translateY(0);
 }
-.load-btn {
+/*.load-btn {
     position:relative;
     bottom:8rem;
     right:0;
@@ -1011,7 +1011,7 @@ body {
 .load-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(9, 31, 180, 0.772);
-}
+}*/
 .switch-btn {
     position:relative;
     bottom:8rem;
