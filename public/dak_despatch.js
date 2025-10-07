@@ -13,6 +13,8 @@ let originalData = new Map();
 let changedRows = new Set(); 
 let newRows = new Set(); 
 
+let columnFilters = {};
+
 //======================================
 //UTILITY FUNCTIONS FOR DATA HANDLING
 //======================================
@@ -159,20 +161,153 @@ function parseDate(dateStr) {
     const year = parseInt(parts[2], 10);
     return new Date(year, month, day);
 }
+//------------------------------------------TOGGLE SORT MENU-------------------------------------------//
+
+function toggleSortMenu(columnKey) {
+  const dropId = `sort-${columnKey}`;               // e.g. "sort-date"
+  const dropdown = document.getElementById(dropId);
+  if (!dropdown) return;                            // safety
+
+  // close any other open dropdown
+  document.querySelectorAll('.sort-dropdown').forEach(d => {
+    if (d !== dropdown) d.classList.remove('show');
+  });
+
+  // toggle current one
+  dropdown.classList.toggle('show');
+
+  // one-shot outside-click closer
+  setTimeout(() => {
+    const close = e => {
+      if (!dropdown.contains(e.target) &&
+          !e.target.closest('.hamburger-btn')) {
+        dropdown.classList.remove('show');
+        document.removeEventListener('click', close);
+      }
+    };
+    document.addEventListener('click', close);
+  }, 0);
+}
+//----------------------------------------SORT COLUMN---------------------------------------------//
+
+function sortColumn(field, order) {
+    syncTableDataWithDOM();
+    
+    // Separate empty and filled rows
+    const filledRows = [];
+    const emptyRows = [];
+    
+    tableData.forEach((row, index) => {
+        const hasData = Object.values(row).some(value => 
+            value && value.toString().trim() !== ''
+        );
+        if (hasData) {
+            filledRows.push({ ...row, originalIndex: index });
+        } else {
+            emptyRows.push({ ...row, originalIndex: index });
+        }
+    });
+    
+    // Sort only filled rows
+    filledRows.sort((a, b) => {
+        let aValue = a[field] || '';
+        let bValue = b[field] || '';
+        
+        if (field === 'date') {
+            aValue = parseDate(aValue);
+            bValue = parseDate(bValue);
+        } else {
+            aValue = aValue.toString().toLowerCase();
+            bValue = bValue.toString().toLowerCase();
+        }
+        
+        return order === 'asc' ? 
+            (aValue > bValue ? 1 : -1) : 
+            (aValue < bValue ? 1 : -1);
+    });
+    
+    // Rebuild tableData with filled rows first, then empty rows
+    tableData = [...filledRows, ...emptyRows].map(row => {
+        const { originalIndex, ...cleanRow } = row;
+        return cleanRow;
+    });
+    
+    rebuildTable();
+    applyAllFilters();
+    document.querySelectorAll('.sort-dropdown').forEach(d => d.classList.remove('show'));
+}
+
+//-------------------------------------SEARCH SPECIFIC COLUMN-----------------------------------------//
+
+function searchColumn(column) {
+    const input = document.querySelector(`input[data-column="${column}"]`);
+    const searchTerm = input.value.toLowerCase().trim();
+    
+    if (searchTerm === '') {
+        clearColumnSearch(column);
+        return;
+    }
+    
+    columnFilters[column] = searchTerm;
+    applyAllFilters();
+    
+    
+    document.getElementById(`sort-${column}`).classList.remove('show');
+}
+
+//--------------------------------------CLEAR COLUMN SEARCH-----------------------------------------//
+
+function clearColumnSearch(column) {
+    const input = document.querySelector(`input[data-column="${column}"]`);
+    input.value = '';
+    delete columnFilters[column];
+    applyAllFilters();
+}
+
+//-------------------------------------APPLY ALL ACTIVE FILTERS--------------------------------------//
+
+function applyAllFilters() {
+    const tbody = document.getElementById('tableBody');
+    const rows = tbody.querySelectorAll('tr');
+    let visibleCount = 0;
+    
+    rows.forEach((row, index) => {
+        let showRow = true;
+        
+        for (const [column, searchTerm] of Object.entries(columnFilters)) {
+            const cellValue = getCellValueByColumn(row, column).toLowerCase();
+            if (!cellValue.includes(searchTerm)) {
+                showRow = false;
+                break;
+            }
+        }
+        
+        if (showRow) {
+            row.style.display = '';
+            row.classList.add('filtered-row');
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+            row.classList.remove('filtered-row');
+        }
+    });
+    
+    showNoResultsMessage(visibleCount === 0);
+}
 
 //==========================================
 //INITIALIZE TABLE
 //==========================================
 function initializeTable() {
-    // Check if we should load user data after login
     const shouldLoadUserData = localStorage.getItem('shouldLoadUserData');
+    const userIsAuthenticated = isAuthenticated();
     
-    if (shouldLoadUserData === 'true') {
-        // Clear the flag
+    if (shouldLoadUserData === 'true' || userIsAuthenticated) {
+        // Clear the flag if it exists
         localStorage.removeItem('shouldLoadUserData');
         
         // Load user data instead of initializing empty table
-        console.log('🔄 Auto-loading user data after login...');
+        console.log('🔄 Loading user data...');
         loadUserData();
     } else {
         // Normal initialization with empty rows
@@ -216,9 +351,23 @@ function initializeTable() {
     //============================
 
     document.querySelectorAll('.hamburger-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const column = this.parentElement.parentElement.parentElement.className;
-            toggleSortMenu(column);
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent event bubbling
+            const columnHeader = this.closest('.column-header');
+            const thElement = columnHeader.closest('th');
+            const column = thElement.className; // Gets the class name like 'date', 'whomSent', etc.
+
+            // Map class names to field names
+            const columnMap = {
+                'date': 'date',
+                'whomSent': 'toWhom',
+                'place': 'place',
+                'subject': 'subject',
+                'sentBy': 'sentBy'
+            };
+
+            const field = columnMap[column] || column;
+            toggleSortMenu(field);
         });
     });
 }
@@ -512,92 +661,6 @@ function moveToNextCell(currentCell) {
     }
 }
 
-//----------------------------------------SORT COLUMN---------------------------------------------//
-
-function sortColumn(field, order) {
-    syncTableDataWithDOM();
-    
-    tableData.sort((a, b) => {
-        let aValue = a[field] || '';
-        let bValue = b[field] || '';
-        
-        if (field === 'date') {
-            aValue = parseDate(aValue);
-            bValue = parseDate(bValue);
-        } else {
-            aValue = aValue.toString().toLowerCase();
-            bValue = bValue.toString().toLowerCase();
-        }
-        
-        return order === 'asc' ? 
-            (aValue > bValue ? 1 : -1) : 
-            (aValue < bValue ? 1 : -1);
-    });
-    
-    rebuildTable();
-    applyAllFilters();
-    document.querySelectorAll('.sort-dropdown').forEach(d => d.classList.remove('show'));
-}
-
-//-------------------------------------SEARCH SPECIFIC COLUMN-----------------------------------------//
-
-function searchColumn(column) {
-    const input = document.querySelector(`input[data-column="${column}"]`);
-    const searchTerm = input.value.toLowerCase().trim();
-    
-    if (searchTerm === '') {
-        clearColumnSearch(column);
-        return;
-    }
-    
-    columnFilters[column] = searchTerm;
-    applyAllFilters();
-    
-    
-    document.getElementById(`sort-${column}`).classList.remove('show');
-}
-
-//--------------------------------------CLEAR COLUMN SEARCH-----------------------------------------//
-
-function clearColumnSearch(column) {
-    const input = document.querySelector(`input[data-column="${column}"]`);
-    input.value = '';
-    delete columnFilters[column];
-    applyAllFilters();
-}
-
-//-------------------------------------APPLY ALL ACTIVE FILTERS--------------------------------------//
-
-function applyAllFilters() {
-    const tbody = document.getElementById('tableBody');
-    const rows = tbody.querySelectorAll('tr');
-    let visibleCount = 0;
-    
-    rows.forEach((row, index) => {
-        let showRow = true;
-        
-        for (const [column, searchTerm] of Object.entries(columnFilters)) {
-            const cellValue = getCellValueByColumn(row, column).toLowerCase();
-            if (!cellValue.includes(searchTerm)) {
-                showRow = false;
-                break;
-            }
-        }
-        
-        if (showRow) {
-            row.style.display = '';
-            row.classList.add('filtered-row');
-            visibleCount++;
-        } else {
-            row.style.display = 'none';
-            row.classList.remove('filtered-row');
-        }
-    });
-    
-    showNoResultsMessage(visibleCount === 0);
-}
-
-
 // Sync table data with DOM
 function syncTableDataWithDOM() {
     const tbody = document.getElementById('tableBody');
@@ -619,32 +682,94 @@ function syncTableDataWithDOM() {
     });
 }
 
+function getCellValueByColumn(row, column) {
+    const cells = row.querySelectorAll('.cell');
+    switch(column) {
+        case 'date':
+            return cells[0]?.value || '';
+        case 'toWhom':
+            return cells[1]?.value || '';
+        case 'place':
+            return cells[3]?.value || '';
+        case 'subject':
+            return cells[5]?.value || '';
+        case 'sentBy':
+            return cells[7]?.value || '';
+        default:
+            return '';
+    }
+}
+
+function showNoResultsMessage(show) {
+    let message = document.getElementById('no-results-message');
+    if (show) {
+        if (!message) {
+            message = document.createElement('div');
+            message.id = 'no-results-message';
+            message.textContent = 'No matching results found';
+            message.style.cssText = 'text-align: center; padding: 20px; color: #666;';
+            document.getElementById('tableBody').appendChild(message);
+        }
+    } else {
+        if (message) {
+            message.remove();
+        }
+    }
+}
+
 //------------------------------------------TOGGLE SORT MENU-------------------------------------------//
 
-function toggleSortMenu(column) {
-    const dropdown = document.getElementById(`sort-${column}`);
+function sortColumn(field, order) {
+    syncTableDataWithDOM();
     
-    if (!dropdown) {
-        console.error(`Dropdown element with ID 'sort-${column}' not found.`);
-        return;
-    }
+    // Separate empty and filled rows
+    const filledRows = [];
+    const emptyRows = [];
     
-    // Close all other dropdowns
-    document.querySelectorAll('.sort-dropdown').forEach(d => {
-        if (d !== dropdown) d.classList.remove('show');
+    tableData.forEach((row, index) => {
+        const hasData = Object.values(row).some(value => 
+            value && value.toString().trim() !== ''
+        );
+        if (hasData) {
+            filledRows.push({ ...row, originalIndex: index });
+        } else {
+            emptyRows.push({ ...row, originalIndex: index });
+        }
     });
     
-    dropdown.classList.toggle('show');
-    
-    // Close dropdown when clicking outside
-    setTimeout(() => {
-        document.addEventListener('click', function closeDropdown(e) {
-            if (!dropdown.contains(e.target) && !e.target.closest('.hamburger-btn')) {
-                dropdown.classList.remove('show');
-                document.removeEventListener('click', closeDropdown);
+    // Sort only filled rows
+    filledRows.sort((a, b) => {
+        let aValue = a[field] || '';
+        let bValue = b[field] || '';
+        
+        if (field === 'date') {
+            aValue = parseDate(aValue);
+            bValue = parseDate(bValue);
+            return order === 'asc' ? 
+                (aValue > bValue ? 1 : -1) : 
+                (aValue < bValue ? 1 : -1);
+        } else {
+            // Convert to string and lowercase for text comparison
+            aValue = aValue.toString().toLowerCase();
+            bValue = bValue.toString().toLowerCase();
+            
+            if (order === 'asc') {
+                return aValue.localeCompare(bValue);
+            } else {
+                return bValue.localeCompare(aValue);
             }
-        });
-    }, 0);
+        }
+    });
+    
+    // Rebuild tableData with filled rows first, then empty rows
+    tableData = [...filledRows, ...emptyRows].map(row => {
+        const { originalIndex, ...cleanRow } = row;
+        return cleanRow;
+    });
+    
+    rebuildTable();
+    applyAllFilters();
+    document.querySelectorAll('.sort-dropdown').forEach(d => d.classList.remove('show'));
 }
 
 //ROW INSERTION
@@ -1399,36 +1524,184 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// View as PDF
+//============================================
+// PDF EXPORT FUNCTIONALITY
+//===========================================
+function exportToPDF() {
+  syncTableDataWithDOM();
 
-/*function viewPdf() {
-    const element = document.getElementById('excelTable');
-    html2pdf()
-        .from(element)
-            .set({
-                margin: [0, 1, 1, 0], 
-                filename: 'output.pdf',
-                image: { type: 'jpeg', quality: 0.99 }, 
-                html2canvas: {
-                    scale: 7, 
-                    useCORS: true, 
-                    width: element.scrollWidth, 
-                    height: element.scrollHeight, 
-                },
-                jsPDF: {
-                    unit: 'mm',
-                    format: 'a3', 
-                    orientation: 'portrait',  
-                    compress: false, 
-                }
-            })
-        .toPdf()
-        .output('blob')
-        .then(blob => {
-            const url = URL.createObjectURL(blob);
-            window.open(url);
-        });
-}*/
+  const original = document.getElementById('excelTable');
+  if (!original) {
+    console.error('Table element not found');
+    showNotification('Error: Table not found', 'error');
+    return;
+  }
+
+  const clone = original.cloneNode(true);
+
+  /* 1. Remove UI elements */
+  clone.querySelectorAll('.hamburger-menu, .sort-dropdown, .col-resizer').forEach(el => el.remove());
+  clone.querySelectorAll('.row-changed, .row-new').forEach(r => r.classList.remove('row-changed', 'row-new'));
+
+  /* 2. Convert inputs to plain text with proper styling */
+  clone.querySelectorAll('input.cell').forEach(inp => {
+    const span = document.createElement('span');
+    span.textContent = inp.value || '';
+    span.style.cssText = 'display:block;padding:4px 6px;min-height:16px;font-size:10px;font-family:Segoe UI,Arial;white-space:nowrap;';
+    inp.parentNode.replaceChild(span, inp);
+  });
+
+  /* 3. Clean up headers */
+  clone.querySelectorAll('th .column-header').forEach(h => {
+    const label = h.querySelector('span');
+    if (label) {
+      h.textContent = label.textContent.trim();
+    }
+  });
+
+  /* 4. Find the table element safely */
+  let table = clone;
+  if (clone.tagName !== 'TABLE') {
+    table = clone.querySelector('table');
+  }
+
+  /* Apply table styling only if table exists */
+  if (table) {
+    table.style.width = 'auto';
+    table.style.tableLayout = 'auto';
+    
+    // Force all columns to be visible
+    clone.querySelectorAll('col').forEach(col => {
+      col.style.width = 'auto';
+    });
+  }
+
+  /* 5. Enhanced print CSS for better PDF rendering */
+  const style = document.createElement('style');
+  style.textContent = `
+    @media print {
+      body { 
+        margin: 0; 
+        padding: 0;
+        font-family: "Segoe UI", Arial, sans-serif;
+        font-size: 9px;
+      }
+      table { 
+        border-collapse: collapse;
+        width: 100% !important;
+        table-layout: fixed;
+        font-size: 9px;
+      }
+      th, td { 
+        border: 1px solid #333;
+        padding: 3px 5px;
+        vertical-align: middle;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: normal;
+        min-width: 80px;
+      }
+      th { 
+        background: #e3f2fd;
+        color: #01579b;
+        font-weight: 600;
+        text-align: left;
+        font-size: 9px;
+        padding: 4px 6px;
+      }
+      thead { 
+        display: table-header-group; 
+      }
+      tbody tr:nth-child(even) td { 
+        background: #f5f9ff; 
+      }
+      .no-print { 
+        display: none !important; 
+      }
+    }
+    
+    /* Screen styles for html2canvas */
+    table {
+      width: auto !important;
+      table-layout: auto;
+    }
+    th, td {
+      min-width: 80px;
+      max-width: 200px;
+      white-space: normal;
+      word-wrap: break-word;
+    }
+  `;
+  clone.appendChild(style);
+
+  /* 6. Create temporary container with proper sizing */
+  const box = document.createElement('div');
+  box.className = 'no-print';
+  box.style.cssText = `
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: ${original.scrollWidth + 100}px;
+    max-width: none;
+    background: white;
+    padding: 10px;
+  `;
+  box.appendChild(clone);
+  document.body.appendChild(box);
+
+  /* 7. Enhanced PDF options with better scaling */
+  const opt = {
+    margin: [0.3, 0.3, 0.3, 0.3], // Smaller margins
+    filename: `DAK_Despatch_${new Date().toISOString().split('T')[0]}.pdf`,
+    image: { 
+      type: 'jpeg', 
+      quality: 0.99 
+    },
+    html2canvas: {
+      scale: 0.8, // Reduced scale to fit more content
+      useCORS: true,
+      letterRendering: true,
+      logging: false,
+      width: box.scrollWidth,
+      height: box.scrollHeight,
+      windowWidth: box.scrollWidth,
+      scrollX: 0,
+      scrollY: 0
+    },
+    jsPDF: {
+      unit: 'cm',
+      format: 'a3',
+      orientation: 'landscape',
+      compress: true,
+      putOnlyUsedFonts: true,
+      floatPrecision: 16
+    }
+  };
+
+  /* 8. Generate PDF with error handling */
+  html2pdf()
+    .set(opt)
+    .from(clone)
+    .save()
+    .then(() => {
+      showNotification('PDF exported successfully!', 'success');
+      setTimeout(() => {
+        if (box.parentNode) {
+          box.remove();
+        }
+      }, 1000);
+    })
+    .catch(err => {
+      console.error('PDF generation error:', err);
+      showNotification('Error generating PDF', 'error');
+      setTimeout(() => {
+        if (box.parentNode) {
+          box.remove();
+        }
+      }, 1000);
+    });
+}
+
 //=====================================
 // REBUILD DATA FOR NO OF ENTRIES
 //===================================== 
