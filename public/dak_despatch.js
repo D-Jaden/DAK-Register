@@ -149,7 +149,7 @@ function restrictDateInput(input) {
         }
     } else {
         input.setCustomValidity('');
-    }
+   }
 }
 
 function parseDate(dateStr) {
@@ -370,6 +370,61 @@ function initializeTable() {
             toggleSortMenu(field);
         });
     });
+    //============================
+    // FORMATTING BUTTON LISTENERS
+    //============================
+
+    const boldBtn = document.getElementById('boldBtn');
+    const italicBtn = document.getElementById('italicsBtn');
+    const underlineBtn = document.getElementById('underlineBtn');
+
+    if (boldBtn) {
+        boldBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const selection = window.getSelection();
+            const activeElement = document.activeElement;
+
+            if (activeElement && activeElement.contentEditable === 'true') {
+                applyFormattingToContentEditable('bold');
+            } else if (activeElement && activeElement.tagName === 'INPUT') {
+                applyFormatting('bold');
+            } else {
+                alert('Please select text in a cell first');
+            }
+        });
+    }
+
+    if (italicBtn) {
+        italicBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const selection = window.getSelection();
+            const activeElement = document.activeElement;
+
+            if (activeElement && activeElement.contentEditable === 'true') {
+                applyFormattingToContentEditable('italic');
+            } else if (activeElement && activeElement.tagName === 'INPUT') {
+                applyFormatting('italic');
+            } else {
+                alert('Please select text in a cell first');
+            }
+        });
+    }
+
+    if (underlineBtn) {
+        underlineBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const selection = window.getSelection();
+            const activeElement = document.activeElement;
+
+            if (activeElement && activeElement.contentEditable === 'true') {
+                applyFormattingToContentEditable('underline');
+            } else if (activeElement && activeElement.tagName === 'INPUT') {
+                applyFormatting('underline');
+            } else {
+                alert('Please select text in a cell first');
+            }
+        });
+    }
 }
 //=========================
 //FONT STYLE AND SIZE
@@ -451,6 +506,200 @@ function makeTableCellsEditable() {
 
     observer.observe(tableBody, { childList: true, subtree: true });
 }
+
+//============================================
+// TEXT FORMATTING FUNCTIONS
+//============================================
+
+function applyFormatting(command) {
+    // Check if there's a text selection
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    
+    const range = selection.getRangeAt(0);
+    
+    // Check if selection is inside a table cell
+    let cell = range.commonAncestorContainer;
+    if (cell.nodeType === Node.TEXT_NODE) {
+        cell = cell.parentNode;
+    }
+    
+    // Find the closest input cell
+    const inputCell = cell.closest('input.cell');
+    if (!inputCell) return;
+    
+    // For input fields, we need to work with contentEditable div
+    // First, convert input to contentEditable if not already
+    if (inputCell.tagName === 'INPUT') {
+        convertInputToContentEditable(inputCell, command);
+    }
+}
+
+function convertInputToContentEditable(input, command) {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    
+    if (start === end) {
+        alert('Please select text first');
+        return;
+    }
+    
+    const text = input.value;
+    const selectedText = text.substring(start, end);
+    const beforeText = text.substring(0, start);
+    const afterText = text.substring(end);
+    
+    // Create formatted span
+    let formattedText = '';
+    switch(command) {
+        case 'bold':
+            formattedText = `${beforeText}<strong>${selectedText}</strong>${afterText}`;
+            break;
+        case 'italic':
+            formattedText = `${beforeText}<em>${selectedText}</em>${afterText}`;
+            break;
+        case 'underline':
+            formattedText = `${beforeText}<u>${selectedText}</u>${afterText}`;
+            break;
+    }
+    
+    // Create a contentEditable div to replace the input
+    const div = document.createElement('div');
+    div.contentEditable = true;
+    div.className = input.className;
+    div.innerHTML = formattedText;
+    div.style.cssText = window.getComputedStyle(input).cssText;
+    div.style.border = 'none';
+    div.style.outline = 'none';
+    div.style.minHeight = input.offsetHeight + 'px';
+    
+    // Copy data attributes
+    div.setAttribute('data-row', input.getAttribute('data-row'));
+    div.setAttribute('data-field', input.getAttribute('data-field'));
+    
+    // Replace input with div
+    input.parentNode.replaceChild(div, input);
+    
+    // Add event listeners to the new div
+    addContentEditableListeners(div);
+    
+    // Focus the div
+    div.focus();
+    
+    // Set cursor at the end
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.selectNodeContents(div);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
+
+function addContentEditableListeners(div) {
+    div.addEventListener('focus', function() {
+        this.classList.add('editing');
+    });
+    
+    div.addEventListener('blur', function() {
+        this.classList.remove('editing');
+        // Save the HTML content back to tableData
+        const row = parseInt(this.getAttribute('data-row'));
+        const field = this.getAttribute('data-field');
+        if (tableData[row]) {
+            tableData[row][field] = this.innerHTML;
+        }
+    });
+    
+    div.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            this.blur();
+        } else if (e.key === 'Tab') {
+            e.preventDefault();
+            this.blur();
+            moveToNextCell(this);
+        }
+    });
+    
+    div.addEventListener('input', debounce(async function() {
+        const row = parseInt(this.getAttribute('data-row'));
+        const field = this.getAttribute('data-field');
+        const value = this.innerHTML;
+        
+        if (tableData[row]) {
+            tableData[row][field] = value;
+        }
+    }, 300));
+}
+
+// Function to apply formatting to contentEditable divs
+function applyFormattingToContentEditable(command) {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    
+    // Check if we're in a contentEditable element
+    let element = selection.anchorNode;
+    if (element.nodeType === Node.TEXT_NODE) {
+        element = element.parentElement;
+    }
+    
+    const contentEditableDiv = element.closest('[contenteditable="true"]');
+    if (!contentEditableDiv) {
+        alert('Please select text in a cell first');
+        return;
+    }
+    
+    // Apply the formatting
+    document.execCommand(command, false, null);
+    contentEditableDiv.focus();
+}
+
+//============================
+// KEYBOARD SHORTCUTS FOR FORMATTING
+//============================
+
+document.addEventListener('keydown', function(e) {
+    const activeElement = document.activeElement;
+    const isInCell = activeElement && (
+        activeElement.classList.contains('cell') || 
+        activeElement.contentEditable === 'true'
+    );
+    
+    if (!isInCell) return;
+    
+    // Ctrl+B for Bold
+    if (e.ctrlKey && e.key === 'b') {
+        e.preventDefault();
+        if (activeElement.contentEditable === 'true') {
+            applyFormattingToContentEditable('bold');
+        } else {
+            applyFormatting('bold');
+        }
+    }
+    
+    // Ctrl+I for Italic
+    if (e.ctrlKey && e.key === 'i') {
+        e.preventDefault();
+        if (activeElement.contentEditable === 'true') {
+            applyFormattingToContentEditable('italic');
+        } else {
+            applyFormatting('italic');
+        }
+    }
+    
+    // Ctrl+U for Underline
+    if (e.ctrlKey && e.key === 'u') {
+        e.preventDefault();
+        if (activeElement.contentEditable === 'true') {
+            applyFormattingToContentEditable('underline');
+        } else {
+            applyFormatting('underline');
+        }
+    }
+});
 
 //===========================
 //NO OF ENTRIES
@@ -647,16 +896,19 @@ function addNewRow() {
 //-------------------------------------MOVE TO NEXT CELL---------------------------------------------//
 
 function moveToNextCell(currentCell) {
-    const allCells = document.querySelectorAll('.cell');
-    const currentIndex = Array.from(allCells).indexOf(currentCell);
+    // Get all cells including both input and contentEditable divs
+    const allCells = Array.from(document.querySelectorAll('.cell, [contenteditable="true"].cell'));
+    const currentIndex = allCells.indexOf(currentCell);
     
     if (currentIndex < allCells.length - 1) {
         allCells[currentIndex + 1].focus();
     } else {
         addNewRow();
         setTimeout(() => {
-            const newCells = document.querySelectorAll('.cell');
-            newCells[newCells.length - 10].focus();
+            const newCells = Array.from(document.querySelectorAll('.cell, [contenteditable="true"].cell'));
+            if (newCells.length > 0) {
+                newCells[newCells.length - 10].focus();
+            }
         }, 100);
     }
 }
@@ -667,34 +919,52 @@ function syncTableDataWithDOM() {
     const rows = tbody.querySelectorAll('tr');
     
     rows.forEach((row, index) => {
-        const cells = row.querySelectorAll('.cell');
         if (tableData[index]) {
-            tableData[index].date = cells[0].value;
-            tableData[index].toWhom = cells[1].value;
-            tableData[index].toWhomHindi = cells[2].value;
-            tableData[index].place = cells[3].value;
-            tableData[index].placeHindi = cells[4].value;
-            tableData[index].subject = cells[5].value;
-            tableData[index].subjectHindi = cells[6].value;
-            tableData[index].sentBy = cells[7].value;
-            tableData[index].sentByHindi = cells[8].value;
+            // Get all cells in the row (both input and contentEditable)
+            const allCells = row.querySelectorAll('.cell, [contenteditable="true"].cell');
+            
+            // Extract values based on whether it's an input or contentEditable
+            const getCellValue = (cell) => {
+                if (!cell) return '';
+                if (cell.tagName === 'INPUT') return cell.value;
+                if (cell.contentEditable === 'true') return cell.innerHTML;
+                return '';
+            };
+            
+            tableData[index].date = getCellValue(allCells[0]);
+            tableData[index].toWhom = getCellValue(allCells[1]);
+            tableData[index].toWhomHindi = getCellValue(allCells[2]);
+            tableData[index].place = getCellValue(allCells[3]);
+            tableData[index].placeHindi = getCellValue(allCells[4]);
+            tableData[index].subject = getCellValue(allCells[5]);
+            tableData[index].subjectHindi = getCellValue(allCells[6]);
+            tableData[index].sentBy = getCellValue(allCells[7]);
+            tableData[index].sentByHindi = getCellValue(allCells[8]);
         }
     });
 }
 
 function getCellValueByColumn(row, column) {
-    const cells = row.querySelectorAll('.cell');
+    const allCells = row.querySelectorAll('.cell, [contenteditable="true"].cell');
+    
+    const getCellValue = (cell) => {
+        if (!cell) return '';
+        if (cell.tagName === 'INPUT') return cell.value;
+        if (cell.contentEditable === 'true') return cell.textContent; // Use textContent for search
+        return '';
+    };
+    
     switch(column) {
         case 'date':
-            return cells[0]?.value || '';
+            return getCellValue(allCells[0]);
         case 'toWhom':
-            return cells[1]?.value || '';
+            return getCellValue(allCells[1]);
         case 'place':
-            return cells[3]?.value || '';
+            return getCellValue(allCells[3]);
         case 'subject':
-            return cells[5]?.value || '';
+            return getCellValue(allCells[5]);
         case 'sentBy':
-            return cells[7]?.value || '';
+            return getCellValue(allCells[7]);
         default:
             return '';
     }
@@ -1106,12 +1376,14 @@ function addCellEventListeners(cell) {
     if (cell.getAttribute('data-field') === 'date') {
         cell.placeholder = 'dd/mm/yyyy';
         cell.addEventListener('input', () => restrictDateInput(cell));
-        cell.addEventListener('blur', () => restrictDateInput(cell));  // Validate on blur too
+        cell.addEventListener('blur', () => restrictDateInput(cell));
     }
 
     cell.addEventListener('focus', function() {
         this.classList.add('editing');
-        this.select();
+        if (this.tagName === 'INPUT') {
+            this.select();
+        }
     });
 
     cell.addEventListener('blur', async function() {
@@ -1120,7 +1392,8 @@ function addCellEventListeners(cell) {
     });
 
     cell.addEventListener('keydown', async function(e) {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             this.blur();
             moveToNextCell(this);
         } else if (e.key === 'Tab') {
@@ -1132,9 +1405,8 @@ function addCellEventListeners(cell) {
 
     cell.addEventListener('input', debounce(async function() {
         await saveData(this);
-    }, 300)); 
+    }, 300));
 }
-
 //----------------------------------------------SAVE THINGY-------------------------------------------//
 
 //==============================================
@@ -1430,7 +1702,7 @@ async function translateTextBatch(texts) {
 async function saveData(cell) {
     const row = parseInt(cell.getAttribute('data-row'));
     const field = cell.getAttribute('data-field');
-    const value = cell.value;
+    const value = cell.contentEditable === 'true' ? cell.innerHTML : cell.value;
 
     if (tableData[row]) {
         const oldValue = tableData[row][field];
@@ -1450,21 +1722,21 @@ async function saveData(cell) {
                 tableData[row].hasChanges = false;
             }
         } else {
-            // This is a new row
             newRows.add(row);
         }
 
-        // Handle automatic translation (existing logic)
+        // Handle automatic translation
         if (translatableColumns.includes(field) && !field.endsWith('Hindi') && value) {
             const hindiField = `${field}Hindi`;
             const hindiInput = document.querySelector(`input[data-row="${row}"][data-field="${hindiField}"]`);
             if (hindiInput) {
-                const translatedText = await translateText(value);
+                // Strip HTML tags for translation
+                const textToTranslate = value.replace(/<[^>]*>/g, '');
+                const translatedText = await translateText(textToTranslate);
                 hindiInput.value = translatedText;
-                hindiInput.disabled = false; 
+                hindiInput.disabled = false;
                 tableData[row][hindiField] = translatedText;
                 
-                // Re-check for changes after translation
                 if (tableData[row].isFromDatabase) {
                     const currentHash = createRowHash(tableData[row]);
                     const originalHash = originalData.get(row);
@@ -1477,11 +1749,9 @@ async function saveData(cell) {
             }
         }
         
-        // Visual indicator for changed rows
         updateRowVisualStatus(row);
     }
 }
-
 //============================================
 // VISUAL INDICATORS FOR CHANGED ROWS
 //============================================
@@ -1526,180 +1796,263 @@ document.addEventListener('DOMContentLoaded', function() {
 
 //============================================
 // PDF EXPORT FUNCTIONALITY
-//===========================================
+//============================================
 function exportToPDF() {
-  syncTableDataWithDOM();
+    syncTableDataWithDOM();
 
-  const original = document.getElementById('excelTable');
-  if (!original) {
-    console.error('Table element not found');
-    showNotification('Error: Table not found', 'error');
-    return;
-  }
-
-  const clone = original.cloneNode(true);
-
-  /* 1. Remove UI elements */
-  clone.querySelectorAll('.hamburger-menu, .sort-dropdown, .col-resizer').forEach(el => el.remove());
-  clone.querySelectorAll('.row-changed, .row-new').forEach(r => r.classList.remove('row-changed', 'row-new'));
-
-  /* 2. Convert inputs to plain text with proper styling */
-  clone.querySelectorAll('input.cell').forEach(inp => {
-    const span = document.createElement('span');
-    span.textContent = inp.value || '';
-    span.style.cssText = 'display:block;padding:4px 6px;min-height:16px;font-size:10px;font-family:Segoe UI,Arial;white-space:nowrap;';
-    inp.parentNode.replaceChild(span, inp);
-  });
-
-  /* 3. Clean up headers */
-  clone.querySelectorAll('th .column-header').forEach(h => {
-    const label = h.querySelector('span');
-    if (label) {
-      h.textContent = label.textContent.trim();
+    const original = document.getElementById('excelTable');
+    if (!original) {
+        console.error('Table element not found');
+        showNotification('Error: Table not found', 'error');
+        return;
     }
-  });
 
-  /* 4. Find the table element safely */
-  let table = clone;
-  if (clone.tagName !== 'TABLE') {
-    table = clone.querySelector('table');
-  }
+    // Clone the entire table
+    const clone = original.cloneNode(true);
 
-  /* Apply table styling only if table exists */
-  if (table) {
-    table.style.width = 'auto';
-    table.style.tableLayout = 'auto';
+    /* 1. Remove UI elements from headers */
+    clone.querySelectorAll('.hamburger-menu, .sort-dropdown, .insert-row-btn').forEach(el => el.remove());
     
-    // Force all columns to be visible
-    clone.querySelectorAll('col').forEach(col => {
-      col.style.width = 'auto';
+    /* 2. Clean up row styling */
+    clone.querySelectorAll('.row-changed, .row-new').forEach(r => {
+        r.classList.remove('row-changed', 'row-new');
+        r.style.borderLeft = 'none';
     });
-  }
 
-  /* 5. Enhanced print CSS for better PDF rendering */
-  const style = document.createElement('style');
-  style.textContent = `
-    @media print {
-      body { 
-        margin: 0; 
+    /* 3. Clean up header cells - keep only the text */
+    clone.querySelectorAll('thead th').forEach(th => {
+        const columnHeader = th.querySelector('.column-header');
+        if (columnHeader) {
+            const span = columnHeader.querySelector('span');
+            if (span) {
+                th.innerHTML = span.textContent;
+            }
+        }
+        // Style the header
+        th.style.cssText = 'background-color: #2c3e50; color: white; padding: 12px 8px; text-align: center; font-weight: 600; border: 1px solid #34495e;';
+    });
+
+    /* 4. Process all rows in tbody */
+    clone.querySelectorAll('tbody tr').forEach(row => {
+        const cells = row.querySelectorAll('td');
+        
+        cells.forEach((cell, index) => {
+            // Serial number column
+            if (index === 0) {
+                const rowNum = cell.querySelector('.row-number');
+                if (rowNum) {
+                    cell.innerHTML = rowNum.textContent;
+                }
+                cell.style.cssText = 'text-align: center; font-weight: 600; background-color: #e9ecef; padding: 8px;';
+                return;
+            }
+            
+            // Check if this cell has input fields
+            const inputs = cell.querySelectorAll('input.cell');
+            
+            if (inputs.length === 0) {
+                // No inputs, keep as is
+                return;
+            }
+            
+            if (inputs.length === 1) {
+                // Date column - single input
+                const input = inputs[0];
+                const div = document.createElement('div');
+                div.textContent = input.value || '';
+                div.style.cssText = 'padding: 6px; text-align: center;';
+                cell.innerHTML = '';
+                cell.appendChild(div);
+            } else if (inputs.length === 2) {
+                // Bilingual column - two inputs (English + Hindi)
+                const englishInput = cell.querySelector('.english-cell');
+                const hindiInput = cell.querySelector('.hindi-cell');
+                
+                const container = document.createElement('div');
+                container.style.cssText = 'padding: 6px;';
+                
+                if (englishInput && englishInput.value.trim()) {
+                    const engDiv = document.createElement('div');
+                    engDiv.textContent = englishInput.value.trim();
+                    engDiv.style.cssText = 'font-weight: 500; margin-bottom: 3px;';
+                    container.appendChild(engDiv);
+                }
+                
+                if (hindiInput && hindiInput.value.trim()) {
+                    const hinDiv = document.createElement('div');
+                    hinDiv.textContent = hindiInput.value.trim();
+                    hinDiv.style.cssText = 'font-family: "Noto Sans Devanagari", sans-serif; font-size: 0.9em; color: #666;';
+                    container.appendChild(hinDiv);
+                }
+                
+                cell.innerHTML = '';
+                cell.appendChild(container);
+            }
+            
+            // Add border to all cells
+            cell.style.border = '1px solid #ddd';
+            cell.style.verticalAlign = 'top';
+            cell.style.minHeight = '45px';
+        });
+    });
+
+    /* 5. Add comprehensive styling */
+    const style = document.createElement('style');
+    style.textContent = `
+        @page {
+            size: A3 landscape;
+            margin: 10mm;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, "Segoe UI", sans-serif;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            table-layout: fixed;
+        }
+        
+        thead {
+            display: table-header-group;
+        }
+        
+        th {
+            background-color: #2c3e50 !important;
+            color: white !important;
+            padding: 12px 8px !important;
+            text-align: center !important;
+            font-weight: 600 !important;
+            border: 1px solid #34495e !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        td {
+            border: 1px solid #ddd !important;
+            padding: 6px 8px !important;
+            vertical-align: top !important;
+            min-height: 40px;
+        }
+        
+        tbody tr:nth-child(even) td:not(.row-number) {
+            background-color: #f8f9fa !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        .row-number {
+            text-align: center !important;
+            font-weight: 600 !important;
+            background-color: #e9ecef !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        /* Column widths */
+        th:nth-child(1), td:nth-child(1) { width: 60px; }
+        th:nth-child(2), td:nth-child(2) { width: 100px; }
+        th:nth-child(3), td:nth-child(3) { width: 180px; }
+        th:nth-child(4), td:nth-child(4) { width: 150px; }
+        th:nth-child(5), td:nth-child(5) { width: 200px; }
+        th:nth-child(6), td:nth-child(6) { width: 150px; }
+    `;
+    
+    const head = clone.querySelector('head') || document.createElement('head');
+    head.appendChild(style);
+    if (!clone.querySelector('head')) {
+        clone.insertBefore(head, clone.firstChild);
+    }
+
+    /* 6. Create wrapper for PDF generation */
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        margin: 0;
         padding: 0;
-        font-family: "Segoe UI", Arial, sans-serif;
-        font-size: 9px;
-      }
-      table { 
-        border-collapse: collapse;
-        width: 100% !important;
-        table-layout: fixed;
-        font-size: 9px;
-      }
-      th, td { 
-        border: 1px solid #333;
-        padding: 3px 5px;
-        vertical-align: middle;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-        white-space: normal;
-        min-width: 80px;
-      }
-      th { 
-        background: #e3f2fd;
-        color: #01579b;
-        font-weight: 600;
-        text-align: left;
-        font-size: 9px;
-        padding: 4px 6px;
-      }
-      thead { 
-        display: table-header-group; 
-      }
-      tbody tr:nth-child(even) td { 
-        background: #f5f9ff; 
-      }
-      .no-print { 
-        display: none !important; 
-      }
-    }
-    
-    /* Screen styles for html2canvas */
-    table {
-      width: auto !important;
-      table-layout: auto;
-    }
-    th, td {
-      min-width: 80px;
-      max-width: 200px;
-      white-space: normal;
-      word-wrap: break-word;
-    }
-  `;
-  clone.appendChild(style);
+        width: 100vw;
+        background: white;
+        display: flex;
+        justify-content: flex-start;
+        align-items: flex-start;
+        overflow: visible;
+        z-index: 9999;
+    `;
 
-  /* 6. Create temporary container with proper sizing */
-  const box = document.createElement('div');
-  box.className = 'no-print';
-  box.style.cssText = `
-    position: absolute;
-    left: -9999px;
-    top: -9999px;
-    width: ${original.scrollWidth + 100}px;
-    max-width: none;
-    background: white;
-    padding: 10px;
-  `;
-  box.appendChild(clone);
-  document.body.appendChild(box);
+    /* Force table to render fully in visible area */
+    clone.style.cssText = `
+        margin: 0;
+        width: fit-content;
+        max-width: none;
+        transform: scale(1.35); /* table size in pdf */
+        transform-origin: top left;
+    `;
 
-  /* 7. Enhanced PDF options with better scaling */
-  const opt = {
-    margin: [0.3, 0.3, 0.3, 0.3], // Smaller margins
-    filename: `DAK_Despatch_${new Date().toISOString().split('T')[0]}.pdf`,
-    image: { 
-      type: 'jpeg', 
-      quality: 0.99 
-    },
-    html2canvas: {
-      scale: 0.8, // Reduced scale to fit more content
-      useCORS: true,
-      letterRendering: true,
-      logging: false,
-      width: box.scrollWidth,
-      height: box.scrollHeight,
-      windowWidth: box.scrollWidth,
-      scrollX: 0,
-      scrollY: 0
-    },
-    jsPDF: {
-      unit: 'cm',
-      format: 'a3',
-      orientation: 'landscape',
-      compress: true,
-      putOnlyUsedFonts: true,
-      floatPrecision: 16
-    }
-  };
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
 
-  /* 8. Generate PDF with error handling */
-  html2pdf()
-    .set(opt)
-    .from(clone)
-    .save()
-    .then(() => {
-      showNotification('PDF exported successfully!', 'success');
-      setTimeout(() => {
-        if (box.parentNode) {
-          box.remove();
+
+    /* 7. PDF generation options */
+    const opt = {
+        margin: [5, 5, 5, 5],
+        filename: `DAK_Despatch_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { 
+            type: 'jpeg', 
+            quality: 0.98 
+        },
+        html2canvas: {
+            scale: 2.5,
+            useCORS: true,
+            scrollX: 0,
+            scrollY: 0,
+            letterRendering: true,
+            backgroundColor: '#ffffff',
+            x: 0,
+            y: 0,
+            windowWidth: clone.scrollWidth + 50,
+            windowHeight: clone.scrollHeight + 50
+        },
+
+
+        jsPDF: {
+            unit: 'mm',
+            format: 'a3',
+            orientation: 'landscape',
+            compress: true
+        },
+        pagebreak: { 
+            mode: ['avoid-all', 'css', 'legacy'] 
         }
-      }, 1000);
-    })
-    .catch(err => {
-      console.error('PDF generation error:', err);
-      showNotification('Error generating PDF', 'error');
-      setTimeout(() => {
-        if (box.parentNode) {
-          box.remove();
-        }
-      }, 1000);
-    });
+    };
+
+    /* 8. Generate PDF */
+    html2pdf()
+        .set(opt)
+        .from(clone)
+        .save()
+        .then(() => {
+            showNotification('PDF exported successfully!', 'success');
+            setTimeout(() => {
+                if (wrapper.parentNode) {
+                    document.body.removeChild(wrapper);
+                }
+            }, 100);
+        })
+        .catch(error => {
+            console.error('PDF generation error:', error);
+            showNotification('Error generating PDF: ' + error.message, 'error');
+            setTimeout(() => {
+                if (wrapper.parentNode) {
+                    document.body.removeChild(wrapper);
+                }
+            }, 100);
+        });
 }
 
 //=====================================
@@ -1733,34 +2086,62 @@ function rebuildTable() {
     const pageRows = tableData.slice(startIdx, endIdx);
 
     pageRows.forEach((rowData, index) => {
-        const serialNumber = startIdx + index + 1; // Sequential number for current page
+        const serialNumber = startIdx + index + 1;
         const row = document.createElement('tr');
+        
+        // Check if data contains HTML formatting
+        const hasHTMLFormatting = (text) => {
+            return text && (text.includes('<strong>') || text.includes('<em>') || text.includes('<u>'));
+        };
+        
+        // Create cell content - input or contentEditable div
+        const createCellContent = (field, value, isEnglish = true) => {
+            const className = isEnglish ? 'cell english-cell' : 'cell hindi-cell';
+            const placeholder = isEnglish ? 'Enter text...' : 'Hindi translation...';
+            const disabled = !isEnglish && !value ? 'disabled' : '';
+            
+            if (hasHTMLFormatting(value)) {
+                return `<div contenteditable="true" class="${className}" data-row="${startIdx + index}" data-field="${field}" style="width: 100%; min-height: 45px; padding: 12px; border: none; outline: none;">${value || ''}</div>`;
+            } else {
+                return `<input type="text" class="${className}" data-row="${startIdx + index}" data-field="${field}" placeholder="${placeholder}" value="${value || ''}" ${disabled}>`;
+            }
+        };
+        
         row.innerHTML = `
             <td class="row-number">${serialNumber}</td>
-            <td><input type="text" class="cell" required data-row="${startIdx + index}" data-field="date" placeholder="Enter date..." value="${rowData.date || ''}"></td>
+            <td>${hasHTMLFormatting(rowData.date) 
+                ? `<div contenteditable="true" class="cell" data-row="${startIdx + index}" data-field="date" style="width: 100%; min-height: 45px; padding: 12px; border: none; outline: none;">${rowData.date || ''}</div>`
+                : `<input type="text" class="cell" required data-row="${startIdx + index}" data-field="date" placeholder="Enter date..." value="${rowData.date || ''}">`
+            }</td>
             <td>
-                <input type="text" class="cell english-cell" required data-row="${startIdx + index}" data-field="toWhom" placeholder="Enter recipient..." value="${rowData.toWhom || ''}">
-                <input type="text" class="cell hindi-cell" data-row="${startIdx + index}" data-field="toWhomHindi" placeholder="Hindi translation..." value="${rowData.toWhomHindi || ''}" ${rowData.toWhomHindi ? '' : 'disabled'}>
+                ${createCellContent('toWhom', rowData.toWhom, true)}
+                ${createCellContent('toWhomHindi', rowData.toWhomHindi, false)}
             </td>
             <td>
-                <input type="text" class="cell english-cell" required data-row="${startIdx + index}" data-field="place" placeholder="Enter place..." value="${rowData.place || ''}">
-                <input type="text" class="cell hindi-cell" data-row="${startIdx + index}" data-field="placeHindi" placeholder="Hindi translation..." value="${rowData.placeHindi || ''}" ${rowData.placeHindi ? '' : 'disabled'}>
+                ${createCellContent('place', rowData.place, true)}
+                ${createCellContent('placeHindi', rowData.placeHindi, false)}
             </td>
             <td>
-                <input type="text" class="cell english-cell" required data-row="${startIdx + index}" data-field="subject" placeholder="Enter subject..." value="${rowData.subject || ''}">
-                <input type="text" class="cell hindi-cell" data-row="${startIdx + index}" data-field="subjectHindi" placeholder="Hindi translation..." value="${rowData.subjectHindi || ''}" ${rowData.subjectHindi ? '' : 'disabled'}>
+                ${createCellContent('subject', rowData.subject, true)}
+                ${createCellContent('subjectHindi', rowData.subjectHindi, false)}
             </td>
             <td>
-                <input type="text" class="cell english-cell" required data-row="${startIdx + index}" data-field="sentBy" placeholder="Mode of sending..." value="${rowData.sentBy || ''}">
-                <input type="text" class="cell hindi-cell" data-row="${startIdx + index}" data-field="sentByHindi" placeholder="Hindi translation..." value="${rowData.sentByHindi || ''}" ${rowData.sentByHindi ? '' : 'disabled'}>
+                ${createCellContent('sentBy', rowData.sentBy, true)}
+                ${createCellContent('sentByHindi', rowData.sentByHindi, false)}
             </td>
         `;
         tbody.appendChild(row);
 
-        const cells = row.querySelectorAll('.cell');
+        // Add listeners to all cells (both input and contentEditable)
+        const cells = row.querySelectorAll('.cell, [contenteditable="true"]');
         cells.forEach(cell => {
-            addCellEventListeners(cell);
+            if (cell.tagName === 'INPUT') {
+                addCellEventListeners(cell);
+            } else if (cell.contentEditable === 'true') {
+                addContentEditableListeners(cell);
+            }
         });
+        
         addRowInsertionListeners(row);
     });
 
