@@ -1,4 +1,5 @@
-CREATE TABLE despatch (serial_no INTEGER NOT NULL,
+CREATE TABLE despatch (
+  serial_no INTEGER NOT NULL,
   date DATE NOT NULL,
   eng_to_whom_sent VARCHAR (255) NOT NULL,
   hi_to_whom_sent VARCHAR (255) NOT NULL,
