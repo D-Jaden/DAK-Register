@@ -7,4 +7,8 @@ CREATE TABLE despatch (serial_no INTEGER NOT NULL,
   eng_subject VARCHAR (255) NOT NULL,
   hi_subject VARCHAR (255) NOT NULL,
   eng_sent_by VARCHAR (255) NOT NULL,
-  hi_sent_by VARCHAR (255) NOT NULL);
+  hi_sent_by VARCHAR (255) NOT NULL,
+  user_id INTEGER ,
+  created_at,
+  updated_at,
+  id NOT NULL);
