@@ -374,7 +374,7 @@ function initializeTable() {
             toggleSortMenu(field);
         });
     });
-    
+
     //============================
     // FORMATTING BUTTON LISTENERS
     //============================
@@ -427,6 +427,32 @@ function initializeTable() {
             }
         });
     }
+
+    //============================
+    // UNDO/REDO BUTTON LISTENERS
+    //============================
+
+    const undoBtn = document.getElementById('undo');
+    const redoBtn = document.getElementById('redo');
+
+    if (undoBtn) {
+        undoBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            undo();
+        });
+        console.log('✅ Undo button listener attached');
+    }
+
+    if (redoBtn) {
+        redoBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            redo();
+        });
+        console.log('✅ Redo button listener attached');
+    }
+
+    // Initialize button states
+    updateUndoRedoButtons();
 }
 //=========================
 //FONT STYLE AND SIZE
@@ -731,6 +757,21 @@ document.addEventListener('keydown', function(e) {
         (activeElement.contentEditable === 'true' && activeElement.classList.contains('cell'))
     );
     
+    // Ctrl+Z for Undo (works globally)
+    if (e.ctrlKey && e.key === 'z') {
+        e.preventDefault();
+        undo();
+        return;
+    }
+    
+    // Ctrl+Y for Redo (works globally)
+    if (e.ctrlKey && e.key === 'y') {
+        e.preventDefault();
+        redo();
+        return;
+    }
+    
+    // Formatting shortcuts only work when in a cell
     if (!isInCell) return;
     
     // Ctrl+B for Bold
@@ -766,6 +807,105 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+//============================================
+// UNDO/REDO FUNCTIONALITY
+//============================================
+
+let undoStack = [];
+let redoStacks = [];
+const MAX_HISTORY = 50;
+
+// Save state to undo stack
+function saveState() {
+    const currentState = {
+        data: deepClone(tableData),
+        timestamp: Date.now()
+    };
+    
+    undoStack.push(currentState);
+    
+    // Limit stack size
+    if (undoStack.length > MAX_HISTORY) {
+        undoStack.shift();
+    }
+    
+    // Clear redo stack when new action is performed
+    redoStacks = [];
+    
+    updateUndoRedoButtons();
+}
+
+// Undo function
+function undo() {
+    if (undoStack.length === 0) {
+        alert('Nothing to undo');
+        return;
+    }
+    
+    // Save current state to redo stack
+    const currentState = {
+        data: deepClone(tableData),
+        timestamp: Date.now()
+    };
+    redoStacks.push(currentState);
+
+    // Get previous state
+    const previousState = undoStack.pop();
+    tableData = deepClone(previousState.data);
+    
+    // Rebuild table with previous state
+    rebuildTable();
+    
+    updateUndoRedoButtons();
+    showNotification('Undo successful', 'info');
+}
+
+// Redo function
+function redo() {
+    if (redoStacks.length === 0) {
+        alert('Nothing to redo');
+        return;
+    }
+    
+    // Save current state to undo stack
+    const currentState = {
+        data: deepClone(tableData),
+        timestamp: Date.now()
+    };
+    undoStack.push(currentState);
+    
+    // Get next state
+    const nextState = redoStacks.pop();
+    tableData = deepClone(nextState.data);
+    
+    // Rebuild table with next state
+    rebuildTable();
+    
+    updateUndoRedoButtons();
+    showNotification('Redo successful', 'info');
+}
+
+// Update button states
+function updateUndoRedoButtons() {
+    const undoBtn = document.getElementById('undo');
+    const redoBtn = document.getElementById('redo');
+    
+    if (undoBtn) {
+        undoBtn.disabled = undoStack.length === 0;
+        undoBtn.style.opacity = undoStack.length === 0 ? '0.5' : '1';
+        undoBtn.style.cursor = undoStack.length === 0 ? 'not-allowed' : 'pointer';
+    }
+    
+    if (redoBtn) {
+        redoBtn.disabled = redoStacks.length === 0;
+        redoBtn.style.opacity = redoStacks.length === 0 ? '0.5' : '1';
+        redoBtn.style.cursor = redoStacks.length === 0 ? 'not-allowed' : 'pointer';
+    }
+}
+
+// Debounced save state for input events
+const debouncedSaveState = debounce(saveState, 1000);
 
 //===========================
 //NO OF ENTRIES
@@ -1866,11 +2006,9 @@ function exportToPDF() {
         if (columnHeader) {
             const span = columnHeader.querySelector('span');
             if (span) {
-                th.innerHTML = span.textContent;
+                th.textContent = span.textContent;
             }
         }
-        // Style the header
-        th.style.cssText = 'background-color: #2c3e50; color: white; padding: 12px 8px; text-align: center; font-weight: 600; border: 1px solid #34495e;';
     });
 
     /* 4. Process all rows in tbody */
@@ -1878,62 +2016,72 @@ function exportToPDF() {
         const cells = row.querySelectorAll('td');
         
         cells.forEach((cell, index) => {
-            // Serial number column
             if (index === 0) {
                 const rowNum = cell.querySelector('.row-number');
                 if (rowNum) {
-                    cell.innerHTML = rowNum.textContent;
+                    cell.textContent = rowNum.textContent;
                 }
-                cell.style.cssText = 'text-align: center; font-weight: 600; background-color: #e9ecef; padding: 8px;';
                 return;
             }
             
-            // Check if this cell has input fields
             const inputs = cell.querySelectorAll('input.cell');
+            const contentEditables = cell.querySelectorAll('[contenteditable="true"].cell');
             
-            if (inputs.length === 0) {
-                // No inputs, keep as is
+            if (contentEditables.length > 0) {
+                if (contentEditables.length === 1) {
+                    const div = contentEditables[0];
+                    const container = document.createElement('div');
+                    container.innerHTML = div.innerHTML;
+                    cell.innerHTML = '';
+                    cell.appendChild(container);
+                } else if (contentEditables.length === 2) {
+                    const english = contentEditables[0];
+                    const hindi = contentEditables[1];
+                    
+                    const container = document.createElement('div');
+                    if (english && english.innerHTML.trim()) {
+                        const engDiv = document.createElement('div');
+                        engDiv.innerHTML = english.innerHTML;
+                        engDiv.style.marginBottom = '2px';
+                        container.appendChild(engDiv);
+                    }
+                    if (hindi && hindi.innerHTML.trim()) {
+                        const hinDiv = document.createElement('div');
+                        hinDiv.innerHTML = hindi.innerHTML;
+                        hinDiv.style.cssText = 'font-family: "Noto Sans Devanagari", sans-serif; font-size: 1.1em; color: #555;';
+                        container.appendChild(hinDiv);
+                    }
+                    cell.innerHTML = '';
+                    cell.appendChild(container);
+                }
                 return;
             }
+            
+            if (inputs.length === 0) return;
             
             if (inputs.length === 1) {
-                // Date column - single input
                 const input = inputs[0];
-                const div = document.createElement('div');
-                div.textContent = input.value || '';
-                div.style.cssText = 'padding: 6px; text-align: center;';
-                cell.innerHTML = '';
-                cell.appendChild(div);
+                cell.textContent = input.value || '';
             } else if (inputs.length === 2) {
-                // Bilingual column - two inputs (English + Hindi)
                 const englishInput = cell.querySelector('.english-cell');
                 const hindiInput = cell.querySelector('.hindi-cell');
                 
                 const container = document.createElement('div');
-                container.style.cssText = 'padding: 6px;';
-                
                 if (englishInput && englishInput.value.trim()) {
                     const engDiv = document.createElement('div');
                     engDiv.textContent = englishInput.value.trim();
-                    engDiv.style.cssText = 'font-weight: 500; margin-bottom: 3px;';
+                    engDiv.style.marginBottom = '2px';
                     container.appendChild(engDiv);
                 }
-                
                 if (hindiInput && hindiInput.value.trim()) {
                     const hinDiv = document.createElement('div');
                     hinDiv.textContent = hindiInput.value.trim();
-                    hinDiv.style.cssText = 'font-family: "Noto Sans Devanagari", sans-serif; font-size: 0.9em; color: #666;';
+                    hinDiv.style.cssText = 'font-family: "Noto Sans Devanagari", sans-serif; font-size: 1.1em; color: #555;';
                     container.appendChild(hinDiv);
                 }
-                
                 cell.innerHTML = '';
                 cell.appendChild(container);
             }
-            
-            // Add border to all cells
-            cell.style.border = '1px solid #ddd';
-            cell.style.verticalAlign = 'top';
-            cell.style.minHeight = '45px';
         });
     });
 
@@ -1942,157 +2090,137 @@ function exportToPDF() {
     style.textContent = `
         @page {
             size: A3 landscape;
-            margin: 10mm;
+            margin: 2mm; /* Reduced margin */
         }
-        
-        body {
-            margin: 0;
+    
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+        }
+    
+        .pdf-wrapper {
+            width: 100%;
+            margin-left: -5mm; /* Shift left by 5mm */
             padding: 0;
-            font-family: Arial, "Segoe UI", sans-serif;
+            text-align: left;
         }
-        
+    
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 11px;
+            font-family: Arial, "Segoe UI", sans-serif;
+            font-size: 12px; /* Increased font size */
             table-layout: fixed;
+            margin-left: 0 !important;
         }
-        
+    
         thead {
             display: table-header-group;
+            break-inside: avoid;
         }
-        
+    
+        tbody {
+            display: table-row-group;
+        }
+    
+        tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+    
         th {
-            background-color: #2c3e50 !important;
+            background-color: #34495e !important;
             color: white !important;
-            padding: 12px 8px !important;
+            padding: 5px 3px !important;
             text-align: center !important;
             font-weight: 600 !important;
-            border: 1px solid #34495e !important;
+            border: 1px solid #2c3e50 !important;
+            font-size: 14px !important; /* Increased header font size */
+            word-wrap: break-word !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-        
+    
         td {
-            border: 1px solid #ddd !important;
-            padding: 6px 8px !important;
-            vertical-align: top !important;
-            min-height: 40px;
-        }
-        
-        tbody tr:nth-child(even) td:not(.row-number) {
-            background-color: #f8f9fa !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
-        
-        .row-number {
+            border: 1px solid #ccc !important;
+            padding: 5px 3px !important;
+            vertical-align: middle !important;
             text-align: center !important;
-            font-weight: 600 !important;
-            background-color: #e9ecef !important;
+            font-size: 12px !important; /* Increased cell font size */
+            line-height: 1.25 !important;
+            word-wrap: break-word !important;
+        }
+    
+        tbody tr:nth-child(even) {
+            background-color: #f9f9f9 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-        
-        /* Column widths */
-        th:nth-child(1), td:nth-child(1) { width: 60px; }
-        th:nth-child(2), td:nth-child(2) { width: 100px; }
-        th:nth-child(3), td:nth-child(3) { width: 180px; }
-        th:nth-child(4), td:nth-child(4) { width: 150px; }
-        th:nth-child(5), td:nth-child(5) { width: 200px; }
-        th:nth-child(6), td:nth-child(6) { width: 150px; }
+    
+        tbody tr:nth-child(odd) {
+            background-color: white !important;
+        }
+    
+        td:first-child {
+            background-color: #ecf0f1 !important;
+            font-weight: 600 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+    
+        /* Adjusted column width proportions for full A3 landscape (~404mm) */
+        th:nth-child(1), td:nth-child(1) { width: 5% !important; }
+        th:nth-child(2), td:nth-child(2) { width: 10% !important; }
+        th:nth-child(3), td:nth-child(3) { width: 20% !important; }
+        th:nth-child(4), td:nth-child(4) { width: 15% !important; }
+        th:nth-child(5), td:nth-child(5) { width: 25% !important; }
+        th:nth-child(6), td:nth-child(6) { width: 25% !important; }
     `;
     
-    const head = clone.querySelector('head') || document.createElement('head');
-    head.appendChild(style);
-    if (!clone.querySelector('head')) {
-        clone.insertBefore(head, clone.firstChild);
-    }
-
-    /* 6. Create wrapper for PDF generation */
+    clone.appendChild(style);
+    
+    /* 6. Wrap table to control alignment */
     const wrapper = document.createElement('div');
-    wrapper.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        margin: 0;
-        padding: 0;
-        width: 100vw;
-        background: white;
-        display: flex;
-        justify-content: flex-start;
-        align-items: flex-start;
-        overflow: visible;
-        z-index: 9999;
-    `;
-
-    /* Force table to render fully in visible area */
-    clone.style.cssText = `
-        margin: 0;
-        width: fit-content;
-        max-width: none;
-        transform: scale(1.35); /* table size in pdf */
-        transform-origin: top left;
-    `;
-
+    wrapper.classList.add('pdf-wrapper');
     wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
-
-
+    
     /* 7. PDF generation options */
     const opt = {
-        margin: [5, 5, 5, 5],
+        margin: [2, 1, 2, 2], // Reduced margins
         filename: `DAK_Despatch_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { 
-            type: 'jpeg', 
-            quality: 0.98 
-        },
+        image: { type: 'jpeg', quality: 0.99 },
         html2canvas: {
-            scale: 2.5,
+            scale: 1.8, // Reduced scale to fit content on one page
             useCORS: true,
-            scrollX: 0,
-            scrollY: 0,
+            logging: false,
             letterRendering: true,
             backgroundColor: '#ffffff',
-            x: 0,
-            y: 0,
-            windowWidth: clone.scrollWidth + 50,
-            windowHeight: clone.scrollHeight + 50
+            scrollY: 0
         },
-
-
         jsPDF: {
             unit: 'mm',
             format: 'a3',
             orientation: 'landscape',
             compress: true
         },
-        pagebreak: { 
-            mode: ['avoid-all', 'css', 'legacy'] 
+        pagebreak: {
+            mode: ['avoid-all', 'css', 'legacy'],
+            avoid: 'tr'
         }
     };
-
+    
     /* 8. Generate PDF */
     html2pdf()
         .set(opt)
-        .from(clone)
+        .from(wrapper)
         .save()
-        .then(() => {
-            showNotification('PDF exported successfully!', 'success');
-            setTimeout(() => {
-                if (wrapper.parentNode) {
-                    document.body.removeChild(wrapper);
-                }
-            }, 100);
-        })
+        .then(() => showNotification('PDF exported successfully!', 'success'))
         .catch(error => {
             console.error('PDF generation error:', error);
             showNotification('Error generating PDF: ' + error.message, 'error');
-            setTimeout(() => {
-                if (wrapper.parentNode) {
-                    document.body.removeChild(wrapper);
-                }
-            }, 100);
         });
 }
 
