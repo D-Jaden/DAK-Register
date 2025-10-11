@@ -454,6 +454,7 @@ function initializeTable() {
     // Initialize button states
     updateUndoRedoButtons();
 }
+
 //=========================
 //FONT STYLE AND SIZE
 //=========================
@@ -1044,24 +1045,23 @@ function addNewRow() {
     tableData.push(rowData);
     row.innerHTML = `
         <td class="row-number">${rowCount}</td>
-        <td><input type="text" class="cell" required data-row="${rowCount-1}" data-field="date" placeholder="Enter date..."></td>
+        <td><input type="text" class="cell" required data-row="${rowCount-1}" data-field="date" placeholder="Enter date..." style="height: 53px;"></td> <!-- Keep as input for date (no wrapping needed) -->
         <td>
-            <input id = "r1" type="text" class="cell english-cell" required data-row="${rowCount-1}" data-field="toWhom" placeholder="Enter recipient..." style = "word-wrap: break-word;">
-            <input type="text" class="cell hindi-cell" data-row="${rowCount-1}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled>
+            <textarea class="cell english-cell" required data-row="${rowCount-1}" data-field="toWhom" placeholder="Enter recipient..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${rowCount-1}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <input type="text" class="cell english-cell" required data-row="${rowCount-1}" data-field="place" placeholder="Enter place...">
-            <input type="text" class="cell hindi-cell" data-row="${rowCount-1}" data-field="placeHindi" placeholder="Hindi translation..." disabled>
+            <textarea class="cell english-cell" required data-row="${rowCount-1}" data-field="place" placeholder="Enter place..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${rowCount-1}" data-field="placeHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <input type="text" class="cell english-cell" required data-row="${rowCount-1}" data-field="subject" placeholder="Enter subject...">
-            <input type="text" class="cell hindi-cell" data-row="${rowCount-1}" data-field="subjectHindi" placeholder="Hindi translation..." disabled>
+            <textarea class="cell english-cell" required data-row="${rowCount-1}" data-field="subject" placeholder="Enter subject..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${rowCount-1}" data-field="subjectHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <input type="text" class="cell english-cell" required data-row="${rowCount-1}" data-field="sentBy" placeholder="Mode of sending...">
-            <input type="text" class="cell hindi-cell" data-row="${rowCount-1}" data-field="sentByHindi" placeholder="Hindi translation..." disabled>
+            <textarea class="cell english-cell" required data-row="${rowCount-1}" data-field="sentBy" placeholder="Mode of sending..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${rowCount-1}" data-field="sentByHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
-     
     `;
 
     tbody.appendChild(row);
@@ -1380,22 +1380,22 @@ function insertRowAfter(targetRow) {
     
     newRow.innerHTML = `
         <td class="row-number">${rowCount}</td>
-        <td><input type="text" class="cell" required data-row="${targetIndex + 1}" data-field="date" placeholder="dd-mm-yyyy"></td>
+        <td><input type="text" class="cell" required data-row="${targetIndex + 1}" data-field="date" placeholder="dd-mm-yyyy" style="height: 53px;"></td>
         <td>
-            <input type="text" class="cell english-cell" required data-row="${targetIndex + 1}" data-field="toWhom" placeholder="Enter recipient...">
-            <input type="text" class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled>
+            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="toWhom" placeholder="Enter recipient..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <input type="text" class="cell english-cell" required data-row="${targetIndex + 1}" data-field="place" placeholder="Enter place...">
-            <input type="text" class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="placeHindi" placeholder="Hindi translation..." disabled>
+            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="place" placeholder="Enter place..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="placeHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <input type="text" class="cell english-cell" required data-row="${targetIndex + 1}" data-field="subject" placeholder="Enter subject...">
-            <input type="text" class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="subjectHindi" placeholder="Hindi translation..." disabled>
+            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="subject" placeholder="Enter subject..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="subjectHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <input type="text" class="cell english-cell" required data-row="${targetIndex + 1}" data-field="sentBy" placeholder="Mode of sending...">
-            <input type="text" class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="sentByHindi" placeholder="Hindi translation..." disabled>
+            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="sentBy" placeholder="Mode of sending..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="sentByHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
     `;
     
@@ -1505,22 +1505,22 @@ function insertRowBefore(targetRow) {
     
     newRow.innerHTML = `
         <td class="row-number">${rowCount}</td>
-        <td><input type="text" class="cell" required data-row="${targetIndex}" data-field="date" placeholder="Enter date..."></td>
+        <td><input type="text" class="cell" required data-row="${targetIndex + 1}" data-field="date" placeholder="dd-mm-yyyy" style="height: 53px;"></td>
         <td>
-            <input type="text" class="cell english-cell" required data-row="${targetIndex}" data-field="toWhom" placeholder="Enter recipient...">
-            <input type="text" class="cell hindi-cell" data-row="${targetIndex}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled>
+            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="toWhom" placeholder="Enter recipient..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <input type="text" class="cell english-cell" required data-row="${targetIndex}" data-field="place" placeholder="Enter place...">
-            <input type="text" class="cell hindi-cell" data-row="${targetIndex}" data-field="placeHindi" placeholder="Hindi translation..." disabled>
+            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="place" placeholder="Enter place..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="placeHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <input type="text" class="cell english-cell" required data-row="${targetIndex}" data-field="subject" placeholder="Enter subject...">
-            <input type="text" class="cell hindi-cell" data-row="${targetIndex}" data-field="subjectHindi" placeholder="Hindi translation..." disabled>
+            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="subject" placeholder="Enter subject..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="subjectHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <input type="text" class="cell english-cell" required data-row="${targetIndex}" data-field="sentBy" placeholder="Mode of sending...">
-            <input type="text" class="cell hindi-cell" data-row="${targetIndex}" data-field="sentByHindi" placeholder="Hindi translation..." disabled>
+            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="sentBy" placeholder="Mode of sending..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="sentByHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
     `;
     
@@ -2263,49 +2263,52 @@ function rebuildTable() {
             return text && (text.includes('<strong>') || text.includes('<em>') || text.includes('<u>'));
         };
         
-        // Create cell content - input or contentEditable div
-        const createCellContent = (field, value, isEnglish = true) => {
+        // Updated: Create cell content - textarea/input for non-formatted, contentEditable for formatted
+        const createCellContent = (field, value, isEnglish = true, isDate = false) => {
             const className = isEnglish ? 'cell english-cell' : 'cell hindi-cell';
-            const placeholder = isEnglish ? 'Enter text...' : 'Hindi translation...';
+            const placeholder = isDate ? 'Enter date...' : (isEnglish ? 'Enter text...' : 'Hindi translation...');
+            const required = isDate || (isEnglish && !field.endsWith('Hindi')) ? 'required' : '';
             const disabled = !isEnglish && !value ? 'disabled' : '';
             
             if (hasHTMLFormatting(value)) {
-                return `<div contenteditable="true" class="${className}" data-row="${startIdx + index}" data-field="${field}" style="width: 100%; min-height: 45px; padding: 12px; border: none; outline: none;">${value || ''}</div>`;
+                // Use contenteditable div for formatted text (supports wrapping via CSS)
+                return `<div contenteditable="true" class="${className}" data-row="${startIdx + index}" data-field="${field}" style="width: 100%; min-height: 53px; height: auto; padding: 12px; border: none; outline: none; resize: none;">${value || ''}</div>`;
+            } else if (isDate) {
+                // Date always uses input (no wrapping needed)
+                return `<input type="text" class="${className}" ${required} data-row="${startIdx + index}" data-field="${field}" placeholder="${placeholder}" value="${value || ''}" style="height: 53px; resize: none;">`;
             } else {
-                return `<input type="text" class="${className}" data-row="${startIdx + index}" data-field="${field}" placeholder="${placeholder}" value="${value || ''}" ${disabled}>`;
+                // Use textarea for text fields (enables wrapping)
+                return `<textarea class="${className}" ${required} data-row="${startIdx + index}" data-field="${field}" placeholder="${placeholder}" ${disabled} rows="2" style="resize: vertical; min-height: 53px; height: auto;">${value || ''}</textarea>`;
             }
         };
         
         row.innerHTML = `
             <td class="row-number">${serialNumber}</td>
-            <td>${hasHTMLFormatting(rowData.date) 
-                ? `<div contenteditable="true" class="cell" data-row="${startIdx + index}" data-field="date" style="width: 100%; min-height: 45px; padding: 12px; border: none; outline: none;">${rowData.date || ''}</div>`
-                : `<input type="text" class="cell" required data-row="${startIdx + index}" data-field="date" placeholder="Enter date..." value="${rowData.date || ''}">`
-            }</td>
+            <td>${createCellContent('date', rowData.date, true, true)}</td> <!-- Date: input or contenteditable -->
             <td>
-                ${createCellContent('toWhom', rowData.toWhom, true)}
-                ${createCellContent('toWhomHindi', rowData.toWhomHindi, false)}
+                ${createCellContent('toWhom', rowData.toWhom, true, false)}
+                ${createCellContent('toWhomHindi', rowData.toWhomHindi, false, false)}
             </td>
             <td>
-                ${createCellContent('place', rowData.place, true)}
-                ${createCellContent('placeHindi', rowData.placeHindi, false)}
+                ${createCellContent('place', rowData.place, true, false)}
+                ${createCellContent('placeHindi', rowData.placeHindi, false, false)}
             </td>
             <td>
-                ${createCellContent('subject', rowData.subject, true)}
-                ${createCellContent('subjectHindi', rowData.subjectHindi, false)}
+                ${createCellContent('subject', rowData.subject, true, false)}
+                ${createCellContent('subjectHindi', rowData.subjectHindi, false, false)}
             </td>
             <td>
-                ${createCellContent('sentBy', rowData.sentBy, true)}
-                ${createCellContent('sentByHindi', rowData.sentByHindi, false)}
+                ${createCellContent('sentBy', rowData.sentBy, true, false)}
+                ${createCellContent('sentByHindi', rowData.sentByHindi, false, false)}
             </td>
         `;
         tbody.appendChild(row);
 
-        // Add listeners to all cells (both input and contentEditable)
+        // Add listeners to all cells (both input/textarea and contentEditable)
         const cells = row.querySelectorAll('.cell, [contenteditable="true"]');
         cells.forEach(cell => {
-            if (cell.tagName === 'INPUT') {
-                addCellEventListeners(cell);
+            if (cell.tagName === 'INPUT' || cell.tagName === 'TEXTAREA') {
+                addCellEventListeners(cell); // Handles both inputs and textareas
             } else if (cell.contentEditable === 'true') {
                 addContentEditableListeners(cell);
             }
