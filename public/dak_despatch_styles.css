@@ -44,6 +44,7 @@ body {
 #flipContainer {
     transform-style: preserve-3d;
     perspective: 1000px;
+    
 }
 
 .flip-out {
@@ -651,8 +652,8 @@ body {
 /*-----------------------------------------------------------------------*/
 .table-container {
     padding: 20px;
-    table-layout: fixed;
-    overflow-x: hidden !important;
+    table-layout: fixed; /* Keep fixed layout for column widths */
+    overflow-x: hidden !important; /* Allow horizontal scroll if table is too wide */
 }
 
 .excel-table {
@@ -692,12 +693,14 @@ body {
 }
 
 .excel-table td {
-    padding: 0;
+    padding: 0; /* Remove padding to let cell content control height */
     border: 1px solid #e1e8ed;
     background: white;
     transition: all 0.3s ease;
-    overflow-wrap: break-word; 
-    white-space: normal;
+    overflow-wrap: break-word; /* Allow word breaking */
+    white-space: normal; /* Allow wrapping */
+    vertical-align: top; /* Align to top for multi-line */
+    height: auto; /* Allow row height to grow */
 }
 
 .column-header {
@@ -706,38 +709,49 @@ body {
     align-items: center;
     width: 100%;
 }
+
 .cell {
-    width: 100%; 
-    height: 53px;
+    width: 100%;
+    min-height: 53px; /* Minimum height matching original */
+    height: auto; /* Allow growth for wrapped text */
     padding: 12px;
     border: none;
     outline: none;
     font-size: 14px;
     font-family: inherit;
     background: transparent;
-    cursor: pointer;
+    cursor: text; /* Changed to text for editing */
     transition: all 0.3s ease;
-    display: block; 
+    display: block;
     text-align: left;
-    box-sizing: border-box; 
-    overflow-wrap: break-word; 
-    white-space: normal;
+    box-sizing: border-box;
+    overflow-wrap: break-word; /* Break long words */
+    word-wrap: break-word; /* Legacy support */
+    white-space: pre-wrap; /* Preserve whitespace but wrap */
+    resize: vertical; /* Allow vertical resize for textareas */
+    line-height: 1.4; /* Better readability for multi-line */
 }
 
 .hindi-cell {
     width: 100%;
-    height: 53px; 
+    min-height: 53px; /* Minimum height */
+    height: auto; /* Allow growth */
     padding: 8px 12px;
     border: none;
     outline: none;
-    font-size: 13px; 
+    font-size: 13px;
     font-family: 'Noto Sans Devanagari', 'Segoe UI', sans-serif;
-    background: #f8f9fa; 
+    background: #f8f9fa;
     cursor: pointer;
     transition: all 0.3s ease;
     display: block;
     text-align: left;
-    border-top: 1px solid #e1e8ed; 
+    border-top: 1px solid #e1e8ed;
+    overflow-wrap: break-word; /* Break long words */
+    word-wrap: break-word; /* Legacy support */
+    white-space: pre-wrap; /* Preserve whitespace but wrap */
+    resize: vertical; /* Allow vertical resize */
+    line-height: 1.4;
 }
 
 .cell:hover, .hindi-cell:hover {
@@ -762,6 +776,12 @@ body {
     text-align: center;
     width: 60px;
     border-right: 2px solid #dee2e6;
+    vertical-align: middle; /* Center vertically */
+}
+
+.excel-table tr {
+    height: auto; /* Allow rows to expand with wrapped content */
+    min-height: 60px; /* Minimum row height */
 }
 
 .excel-table tr:nth-child(even) td:not(.row-number) {
