@@ -98,7 +98,7 @@ router.post('/save', authenticateJWT, async (req, res) => {
                 pgDate,
                 row.receivedFrom || null,
                 row.receivedFromHindi || null,
-                row.letterNumber || null,  -- Using letter_no instead of eng_letter_number
+                row.letterNumber || null,  
                 row.subject || null,
                 row.subjectHindi || null,
                 userId
@@ -164,7 +164,7 @@ router.get('/load', authenticateJWT, async (req, res) => {
             acquiredDate: formatDateForFrontend(row.acquired_date),
             receivedFrom: row.eng_received_from || '',
             receivedFromHindi: row.hi_received_from || '',
-            letterNumber: row.letter_no || '',  -- Using letter_no instead of eng_letter_number
+            letterNumber: row.letter_no || '', 
             subject: row.eng_subject || '',
             subjectHindi: row.hi_subject || '',
             isFromDatabase: true,
@@ -228,7 +228,7 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
                     pgDate,
                     row.receivedFrom || null,
                     row.receivedFromHindi || null,
-                    row.letterNumber || null,  -- Using letter_no instead of eng_letter_number
+                    row.letterNumber || null,
                     row.subject || null,
                     row.subjectHindi || null,
                     row.id,
@@ -269,7 +269,7 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
                     pgDate,
                     row.receivedFrom || null,
                     row.receivedFromHindi || null,
-                    row.letterNumber || null,  -- Using letter_no instead of eng_letter_number
+                    row.letterNumber || null, 
                     row.subject || null,
                     row.subjectHindi || null,
                     userId
