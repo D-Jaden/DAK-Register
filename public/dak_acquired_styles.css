@@ -9,11 +9,38 @@ body {
     background: #f2f5ff;
     min-height: 100vh;
     padding: 20px;
+    overflow-x:hidden;
+}
+
+.toolbar-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+}
+
+/* Mobile menu toggle button */
+.mobile-menu-toggle {
+    display: none;
+    background-color: #2577ad;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+.mobile-menu-toggle:hover {
+    background-color: #1e5f8a;
 }
 
 .cell.highlight {
-    background-color:  #93cfe4 !important;
+    background-color: #91d6f0ce !important;
 }
+.cell.highlight:hover{
+    background: rgb(109, 179, 201);
+}
+
 /*==============================================================================*/
 /*FLIP CONTAINER*/
 /*==============================================================================*/
@@ -36,7 +63,7 @@ body {
         opacity: 1;
     }
     to {
-        transform: rotateY(18deg);
+        transform: rotateY(180deg);
         opacity: 0;
     }
 }
@@ -59,8 +86,8 @@ body {
     background: white;
     border-radius: 15px;
     box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    overflow: hidden;
     outline: #000000;
-    overflow-x: hidden;
     display: flex;
     flex-direction: column;
 }
@@ -103,43 +130,12 @@ body {
     flex: 0;
 }
 
-/* Mobile menu toggle button */
-.mobile-menu-toggle {
-    display: none;
-    background-color: #2577ad;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    margin-bottom: 10px;
-}
-.mobile-menu-toggle:hover {
-    background-color: #1e5f8a;
-}
 /*---------------------------------------FEATURES------------------------------*/
 .toolbar-container {
     max-width: 1200px;
     margin: 0 auto;
     position: relative;
     height:180px;
-}
-
-/* Mobile menu toggle button */
-.mobile-menu-toggle {
-    display: none;
-    background-color: #2577ad;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    margin-bottom: 10px;
-}
-.mobile-menu-toggle:hover {
-    background-color: #1e5f8a;
 }
 
 /* Main features container */
@@ -196,6 +192,7 @@ body {
     background-color: #f3f3f3f9;
     color: rgb(0, 0, 0);
 }
+
 /* Font style button */
 .fstyle {
     align-items: center;
@@ -342,6 +339,7 @@ body {
     background-color: rgb(0, 0, 0);
     color: white;
 }
+
 /* Find and replace section */
 .find-replace {
     display: flex;
@@ -415,6 +413,7 @@ body {
     justify-content: center;
     align-items: center;
 }
+
 /* Export section */
 .pdf {
     position: relative;
@@ -494,6 +493,7 @@ body {
 .dropdown-menu li a:hover {
     background: #f0f0f0;
 }
+
 /* Tooltip styles */
 .fontsize-hidden-text {
     visibility: hidden;
@@ -637,10 +637,14 @@ body {
     visibility: visible;
     opacity: 1;
 }
-/*---------------------------------TABLE--------------------------------*/
+
+/*-----------------------------------------------------------------------*/
+/*---------------------------------TABLE---------------------------------*/
+/*-----------------------------------------------------------------------*/
 .table-container {
     padding: 20px;
-    overflow-x: auto;
+    table-layout: fixed;
+    overflow-x: hidden !important;
 }
 
 .excel-table {
@@ -684,6 +688,10 @@ body {
     border: 1px solid #e1e8ed;
     background: white;
     transition: all 0.3s ease;
+    overflow-wrap: break-word;
+    white-space: normal;
+    vertical-align: top;
+    height: auto;
 }
 
 .column-header {
@@ -691,6 +699,93 @@ body {
     justify-content: space-between;
     align-items: center;
     width: 100%;
+}
+
+.cell {
+    width: 100%;
+    min-height: 53px;
+    height: auto;
+    padding: 12px;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-family: inherit;
+    background: transparent;
+    cursor: text;
+    transition: all 0.3s ease;
+    display: block;
+    text-align: left;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    resize: vertical;
+    line-height: 1.4;
+}
+
+.hindi-cell {
+    width: 100%;
+    min-height: 53px;
+    height: auto;
+    padding: 8px 12px;
+    border: none;
+    outline: none;
+    font-size: 13px;
+    font-family: 'Noto Sans Devanagari', 'Segoe UI', sans-serif;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: block;
+    text-align: left;
+    border-top: 1px solid #e1e8ed;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    resize: vertical;
+    line-height: 1.4;
+}
+
+.cell:hover, .hindi-cell:hover {
+    background: linear-gradient(135deg, #f8f9fa 0%, #cfe1f3 100%);
+}
+
+.cell:focus, .hindi-cell:focus {
+    background: linear-gradient(135deg, #e3f2fd 0%, #cfe1f3 100%);
+    cursor: text;
+    box-shadow: inset 0 0 0 2px #a6c9e7;
+}
+
+.cell.editing, .hindi-cell.editing {
+    background: linear-gradient(135deg, #ffffd8 0%, #a0cfff 100%);
+    box-shadow: inset 0 0 0 2px #c0c5e7;
+}
+
+.row-number {
+    background: linear-gradient(135deg, #f8f9fa 0%, #cfe1f3 100%);
+    font-weight: 600;
+    color: #6c757d;
+    text-align: center;
+    width: 60px;
+    border-right: 2px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.excel-table tr {
+    height: auto;
+    min-height: 60px;
+}
+
+.excel-table tr:nth-child(even) td:not(.row-number) {
+    background: #f8f9fa;
+}
+
+.excel-table tr:hover td {
+    background: linear-gradient(135deg, #e8f5e8 0%, #cfe1f3 100%);
+}
+
+.excel-table tr:hover td.row-number {
+    background: linear-gradient(135deg, #e3f2fd 0%, #cfe1f3 100%);
+    color: #1976d2;
 }
 
 .hamburger-menu {
@@ -793,75 +888,6 @@ body {
     background: #2e8b2b;
 }
 
-
-.cell {
-    width: 100%;
-    height: 53px;
-    padding: 12px;
-    border: none;
-    outline: none;
-    font-size: 14px;
-    font-family: inherit;
-    background: transparent;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: block; 
-    text-align: left;
-}
-
-.hindi-cell {
-    width: 100%;
-    height: 53px; 
-    padding: 8px 12px;
-    border: none;
-    outline: none;
-    font-size: 13px; 
-    font-family: 'Noto Sans Devanagari', 'Segoe UI', sans-serif;
-    background: #f8f9fa; 
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: block;
-    text-align: left;
-    border-top: 1px solid #e1e8ed; 
-}
-
-.cell:hover, .hindi-cell:hover {
-    background: linear-gradient(135deg, #f8f9fa 0%, #cfe1f3 100%);
-}
-
-.cell:focus, .hindi-cell:focus {
-    background: linear-gradient(135deg, #e3f2fd 0%, #cfe1f3 100%);
-    cursor: text;
-    box-shadow: inset 0 0 0 2px #a6c9e7;
-}
-
-.cell.editing, .hindi-cell.editing {
-    background: linear-gradient(135deg, #fff3e0 0%, #77aadd 100%);
-    box-shadow: inset 0 0 0 2px #c0c5e7;
-}
-
-.row-number {
-    background: linear-gradient(135deg, #f8f9fa 0%, #cfe1f3 100%);
-    font-weight: 600;
-    color: #6c757d;
-    text-align: center;
-    width: 60px;
-    border-right: 2px solid #dee2e6;
-}
-
-.excel-table tr:nth-child(even) td:not(.row-number) {
-    background: #f8f9fa;
-}
-
-.excel-table tr:hover td {
-    background: linear-gradient(135deg, #e8f5e8 0%, #cfe1f3 100%);
-}
-
-.excel-table tr:hover td.row-number {
-    background: linear-gradient(135deg, #e3f2fd 0%, #cfe1f3 100%);
-    color: #1976d2;
-}
-
 /*----------------------------------------------ROW INSERTION--------------------------------------------------------------*/
 .insert-row-btn {
     position: absolute;
@@ -929,7 +955,7 @@ body {
 /*-----------------------------BOTTOM-BUTTONS------------------------------*/
 .add-row-btn {
     position:relative;
-    bottom:6rem;
+    bottom:8rem;
     margin: 20px 0;
     padding: 12px 24px;
     background: linear-gradient(135deg, #18A209 0%, #18a209e7 100%);
@@ -954,7 +980,7 @@ body {
 
 .save-btn {
     position:relative;
-    bottom:6rem;
+    bottom:8rem;
     margin: 30px 0px;
     padding: 12px 24px;
     background: linear-gradient(135deg, #18A209 0%, #18a209f9 100%);
@@ -976,29 +1002,10 @@ body {
 .save-btn:active {
     transform: translateY(0);
 }
-.load-btn {
-    position:relative;
-    bottom:6rem;
-    right:0;
-    margin: 30px 0px;
-    padding: 12px 24px;
-    background: linear-gradient(135deg, #001a70 0%, #110050f9 100%);
-    color: white;
-    border: none;
-    border-radius: 25px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-.load-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(9, 31, 180, 0.772);
-}
 
 .switch-btn {
     position:relative;
-    bottom:6rem;
+    bottom:8rem;
     margin: 35px 0px;
     padding: 12px 24px;
     background: linear-gradient(135deg, #001a70 0%, #201c62 100%);
@@ -1042,9 +1049,10 @@ body {
     visibility: visible;
     opacity: 1;
 }
+
 .logout-btn {
     position:relative;
-    bottom:12rem;
+    bottom:14rem;
     left:110rem;
     padding: 12px 24px;
     background: linear-gradient(135deg, #dd2121 0%, #e40b0be7 100%);
@@ -1066,13 +1074,73 @@ body {
 .logout-btn:active {
     transform: translateY(0);
 }
+
+.row-changed {
+    background-color: #fff3cd !important;
+    border-left: 4px solid #ffc107;
+}
+
+.row-new {
+    background-color: #d4edda !important;
+    border-left: 4px solid #28a745;
+}
+
+.row-changed td {
+    position: relative;
+}
+
+.row-new td {
+    position: relative;
+}
+
+/* Add indicator icons */
+.row-changed td:first-child::before {
+    content: "✏️";
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+}
+
+.row-new td:first-child::before {
+    content: "✨";
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+}
+
+/* Status indicator in save button */
+.save-btn.has-changes {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.save-btn.has-changes::after {
+    content: " (" attr(data-changes) ")";
+    font-size: 12px;
+}
+
+/* Notification styles */
+#notification {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 6px;
+}
+
 /*---------------------------------RESPONSIVENESS----------------------------*/
 @media (max-width: 768px) {
     .container {
         margin: 10px;
         border-radius: 10px;
     }
-    
+    .buttons {
+      justify-content: space-between;
+    }   
+    .split-btn-container {
+      width: 100%;
+    }
     .header {
         height: 10vh;
         min-height: 80px;
@@ -1085,17 +1153,19 @@ body {
     .header h3 {
         font-size: 2vw;
     }
+
     .digital-india-logo img,
     .nic-logo img {
         height: 6vh;
         max-width: 25vw;
     }
-    .table-container {
-        padding: 15px;
-    }
 
     .excel-table{
         bottom:13rem;
+    }
+
+    .table-container {
+        padding: 15px;
     }
 
     .excel-table th,
@@ -1111,7 +1181,7 @@ body {
     }
 
     .hindi-cell {
-        height: 35px; /* Adjust for smaller screens */
+        height: 35px;
         font-size: 11px;
     }
 
@@ -1124,23 +1194,12 @@ body {
     .table-container {
         padding-right: 110px;
     }
-    .search-container{
-        position:relative;
-        right:47rem;
-        top:6rem;
-
-    }
-    .entries-btn, .dropdown-toggle{
-        right:7.3rem;
-    }
-    .fstyle, .fsize {
-        width: 200px;
-    }
     .button-container{
         position: relative;
         bottom:6rem;
         left:4rem;
     }
+
 }
 @media (max-width: 768px) {
     .mobile-menu-toggle {
@@ -1177,23 +1236,19 @@ body {
         margin: 5px;
     }
 
-    .undo-btn, .redo-btn{
-        position:relative;
-        top:-9rem;
-    }
-
-    .bold-btn, .italic-btn ,.underline-btn{
-        position:relative;
-        top:-6rem;
-    }
     .find-replace, .export-section {
         position: static;
         margin: 10px 0;
     }
-    .btn-group {
-        justify-content: center;
-        flex-wrap: wrap;
+    .undo-btn, .redo-btn{
+        position:relative;
+        top:-9rem;
     }
+    .bold-btn, .italic-btn ,.underline-btn{
+        position:relative;
+        top:-6rem;
+    }
+
     .find-replace {
         width: 200px;
         position: relative;
@@ -1207,13 +1262,10 @@ body {
     }
     .find-box, .replace-box {
         width: 100%;
+        gap:5px;
     }
     .find-btn, .replace-btn {
         width: 100%;
-    }
-    .export-section {
-        justify-content: center;
-        flex-direction: column;
     }
     .match-counter{
         position:relative;
@@ -1226,22 +1278,29 @@ body {
     .search-container{
         position:relative;
         right:32rem;
-        top:-11rem;
+        bottom:11rem;
     }
     .entries-btn, .dropdown-toggle{
-        right:-0.1rem;
-    }
-    .entries-btn{
-        width:170px;
+        right:8.5rem;
     }
     .pdf-btn{
-        width:200px;
+        width:150px;
+    }
+    .entries-btn{
+        width:120px;
+    }
+    .export-section {
+        justify-content: center;
+        flex-direction: column;
     }
     .instr {
         width: 100%;
         max-width: 200px;
     }
-   
+    .fstyle, .fsize {
+        width: 200px;
+    }
+    
 }
 
 @media (max-width: 480px) {
@@ -1253,16 +1312,12 @@ body {
         width: 30px;
         height: 35px;
     }
-
-    .fsize {
-        width: 50px;
-    }
-
     .entries-btn {
         width: 60px;
         font-size: 11px;
     }
 }
+
 /* Responsive logout button */
 @media (max-width: 768px) {
     .logout-btn {
@@ -1270,7 +1325,7 @@ body {
         font-size: 15px;
         position: relative;
         bottom: 16.9rem;
-        left:40rem;
+        left:28rem;
     }
 }
 @media (max-width: 480px) {
@@ -1280,6 +1335,6 @@ body {
         margin: 10px auto 0 auto;
         position: relative;
         bottom: 16.9rem;
-        left:28rem;
+        left:10rem;
     }
 }
