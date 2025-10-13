@@ -78,5 +78,6 @@ Planned future enhancements include:
 - 💾 **Auto-Save Feature** — periodic data saving to prevent accidental loss.  
 - 🧩 **Enhanced Security** — improved password encryption and validation logic.
 - **Better Responsiveness** — ability to respond to different devices better
+- **Better PDF View** — A modern way of viewing the table in PDF Format 
 
 ---
