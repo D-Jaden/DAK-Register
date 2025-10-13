@@ -22,6 +22,7 @@ Make sure you have the following installed before running the project:
 - cd DAK-Register
 - npm run dev (make sure you have insaleed the necessary npm packages mentioned in the node_modules)
 - Go to http://localhost:3000
+- Don't forget to read each folder for better understanding for the database,routes,and node modules 
 
 ## FEATURES
 ### 🔐 Authentication  
