@@ -543,8 +543,8 @@ function makeTableCellsEditable() {
 function applyFormatting(command) {
     const activeElement = document.activeElement;
     
-    // Check if we're in an input field
-    if (activeElement && activeElement.tagName === 'INPUT' && activeElement.classList.contains('cell')) {
+    // Check if we're in a textarea or input field
+    if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT') && activeElement.classList.contains('cell')) {
         const start = activeElement.selectionStart;
         const end = activeElement.selectionEnd;
         
@@ -553,51 +553,55 @@ function applyFormatting(command) {
             return;
         }
         
-        convertInputToContentEditable(activeElement, command);
+        convertTextareaToContentEditable(activeElement, command);
     } else {
         alert('Please click on a cell and select text first');
     }
 }
 
-function convertInputToContentEditable(input, command) {
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
+function convertTextareaToContentEditable(textarea, command) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
     
     if (start === end) {
         alert('Please select text first by dragging your mouse over it');
         return;
     }
     
-    const text = input.value;
+    const text = textarea.value;
     const selectedText = text.substring(start, end);
     const beforeText = text.substring(0, start);
     const afterText = text.substring(end);
     
-    // Create formatted text
+    // Create formatted text with proper HTML escaping for existing content
+    const escapedBefore = escapeHtml(beforeText);
+    const escapedAfter = escapeHtml(afterText);
+    const escapedSelected = escapeHtml(selectedText);
+    
     let formattedText = '';
     switch(command) {
         case 'bold':
-            formattedText = `${beforeText}<strong>${selectedText}</strong>${afterText}`;
+            formattedText = `${escapedBefore}<strong>${escapedSelected}</strong>${escapedAfter}`;
             break;
         case 'italic':
-            formattedText = `${beforeText}<em>${selectedText}</em>${afterText}`;
+            formattedText = `${escapedBefore}<em>${escapedSelected}</em>${escapedAfter}`;
             break;
         case 'underline':
-            formattedText = `${beforeText}<u>${selectedText}</u>${afterText}`;
+            formattedText = `${escapedBefore}<u>${escapedSelected}</u>${escapedAfter}`;
             break;
     }
     
-    // Create a contentEditable div to replace the input
+    // Create a contentEditable div to replace the textarea
     const div = document.createElement('div');
     div.contentEditable = true;
-    div.className = input.className;
+    div.className = textarea.className;
     div.innerHTML = formattedText;
     
-    // Copy all styles from input
-    const computedStyle = window.getComputedStyle(input);
+    // Copy all styles from textarea
+    const computedStyle = window.getComputedStyle(textarea);
     div.style.cssText = `
         width: 100%;
-        min-height: ${input.offsetHeight}px;
+        min-height: ${textarea.offsetHeight}px;
         padding: 12px;
         border: none;
         outline: none;
@@ -606,18 +610,23 @@ function convertInputToContentEditable(input, command) {
         font-family: ${computedStyle.fontFamily};
         font-size: ${computedStyle.fontSize};
         color: ${computedStyle.color};
+        resize: vertical;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+        line-height: 1.4;
     `;
     
     // Copy data attributes
-    div.setAttribute('data-row', input.getAttribute('data-row'));
-    div.setAttribute('data-field', input.getAttribute('data-field'));
-    if (input.getAttribute('required')) {
+    div.setAttribute('data-row', textarea.getAttribute('data-row'));
+    div.setAttribute('data-field', textarea.getAttribute('data-field'));
+    if (textarea.getAttribute('required')) {
         div.setAttribute('required', 'true');
     }
     
-    // Replace input with div
-    const parent = input.parentNode;
-    parent.replaceChild(div, input);
+    // Replace textarea with div
+    const parent = textarea.parentNode;
+    parent.replaceChild(div, textarea);
     
     // Add event listeners to the new div
     addContentEditableListeners(div);
@@ -625,15 +634,15 @@ function convertInputToContentEditable(input, command) {
     // Focus the div and place cursor after the formatted text
     div.focus();
     
-    // Set cursor position
+    // Set cursor position after the formatted text
     setTimeout(() => {
         const range = document.createRange();
         const sel = window.getSelection();
         
-        // Find the position after the formatted text
-        const strongTag = div.querySelector('strong, em, u');
-        if (strongTag && strongTag.nextSibling) {
-            range.setStart(strongTag.nextSibling, 0);
+        // Find the formatted tag
+        const formattedTag = div.querySelector('strong, em, u');
+        if (formattedTag && formattedTag.nextSibling) {
+            range.setStart(formattedTag.nextSibling, 0);
         } else {
             range.selectNodeContents(div);
             range.collapse(false);
@@ -644,6 +653,59 @@ function convertInputToContentEditable(input, command) {
     }, 10);
 }
 
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Function to apply formatting to contentEditable divs
+function applyFormattingToContentEditable(command) {
+    const selection = window.getSelection();
+    
+    if (!selection.rangeCount || selection.isCollapsed) {
+        alert('Please select text first by dragging your mouse over it');
+        return;
+    }
+    
+    // Check if we're in a contentEditable element
+    let element = selection.anchorNode;
+    if (element.nodeType === Node.TEXT_NODE) {
+        element = element.parentElement;
+    }
+    
+    const contentEditableDiv = element.closest('[contenteditable="true"]');
+    if (!contentEditableDiv || !contentEditableDiv.classList.contains('cell')) {
+        alert('Please select text in a cell first');
+        return;
+    }
+    
+    // Save state for undo
+    saveState();
+    
+    // Apply the formatting
+    document.execCommand(command, false, null);
+    
+    // Trigger save
+    const row = parseInt(contentEditableDiv.getAttribute('data-row'));
+    const field = contentEditableDiv.getAttribute('data-field');
+    if (tableData[row]) {
+        tableData[row][field] = contentEditableDiv.innerHTML;
+        
+        // Mark as changed
+        if (tableData[row].isFromDatabase) {
+            changedRows.add(row);
+            tableData[row].hasChanges = true;
+        } else {
+            newRows.add(row);
+        }
+        updateRowVisualStatus(row);
+    }
+    
+    contentEditableDiv.focus();
+}
+
 function addContentEditableListeners(div) {
     div.addEventListener('focus', function() {
         this.classList.add('editing');
@@ -651,16 +713,19 @@ function addContentEditableListeners(div) {
     
     div.addEventListener('blur', async function() {
         this.classList.remove('editing');
-        // Save the HTML content back to tableData
         const row = parseInt(this.getAttribute('data-row'));
         const field = this.getAttribute('data-field');
         if (tableData[row]) {
             tableData[row][field] = this.innerHTML;
             
-            // Mark as changed
             if (tableData[row].isFromDatabase) {
-                changedRows.add(row);
-                tableData[row].hasChanges = true;
+                const currentHash = createRowHash(tableData[row]);
+                const originalHash = originalData.get(row);
+                
+                if (currentHash !== originalHash) {
+                    changedRows.add(row);
+                    tableData[row].hasChanges = true;
+                }
             } else {
                 newRows.add(row);
             }
@@ -687,63 +752,16 @@ function addContentEditableListeners(div) {
         if (tableData[row]) {
             tableData[row][field] = this.innerHTML;
             
-            // Mark as changed
             if (tableData[row].isFromDatabase) {
                 changedRows.add(row);
                 tableData[row].hasChanges = true;
             } else {
                 newRows.add(row);
             }
+            updateRowVisualStatus(row);
         }
     }, 300));
 }
-
-// Function to apply formatting to contentEditable divs
-function applyFormattingToContentEditable(command) {
-    const selection = window.getSelection();
-    
-    if (!selection.rangeCount || selection.isCollapsed) {
-        alert('Please select text first by dragging your mouse over it');
-        return;
-    }
-    
-    // Check if we're in a contentEditable element
-    let element = selection.anchorNode;
-    if (element.nodeType === Node.TEXT_NODE) {
-        element = element.parentElement;
-    }
-    
-    const contentEditableDiv = element.closest('[contenteditable="true"]');
-    if (!contentEditableDiv || !contentEditableDiv.classList.contains('cell')) {
-        alert('Please select text in a cell first');
-        return;
-    }
-    
-    // Save selection before executing command
-    const range = selection.getRangeAt(0);
-    
-    // Apply the formatting
-    document.execCommand(command, false, null);
-    
-    // Trigger save
-    const row = parseInt(contentEditableDiv.getAttribute('data-row'));
-    const field = contentEditableDiv.getAttribute('data-field');
-    if (tableData[row]) {
-        tableData[row][field] = contentEditableDiv.innerHTML;
-        
-        // Mark as changed
-        if (tableData[row].isFromDatabase) {
-            changedRows.add(row);
-            tableData[row].hasChanges = true;
-        } else {
-            newRows.add(row);
-        }
-        updateRowVisualStatus(row);
-    }
-    
-    contentEditableDiv.focus();
-}
-
 
 //====================================
 // KEYBOARD SHORTCUTS FOR FORMATTING
@@ -752,8 +770,9 @@ function applyFormattingToContentEditable(command) {
 document.addEventListener('keydown', function(e) {
     const activeElement = document.activeElement;
     
-    // Check if we're in a cell (input or contentEditable)
+    // Check if we're in a cell (textarea, input, or contentEditable)
     const isInCell = activeElement && (
+        (activeElement.tagName === 'TEXTAREA' && activeElement.classList.contains('cell')) ||
         (activeElement.tagName === 'INPUT' && activeElement.classList.contains('cell')) ||
         (activeElement.contentEditable === 'true' && activeElement.classList.contains('cell'))
     );
@@ -781,7 +800,7 @@ document.addEventListener('keydown', function(e) {
         
         if (activeElement.contentEditable === 'true') {
             applyFormattingToContentEditable('bold');
-        } else if (activeElement.tagName === 'INPUT') {
+        } else if (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT') {
             applyFormatting('bold');
         }
     }
@@ -792,7 +811,7 @@ document.addEventListener('keydown', function(e) {
         
         if (activeElement.contentEditable === 'true') {
             applyFormattingToContentEditable('italic');
-        } else if (activeElement.tagName === 'INPUT') {
+        } else if (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT') {
             applyFormatting('italic');
         }
     }
@@ -803,11 +822,66 @@ document.addEventListener('keydown', function(e) {
         
         if (activeElement.contentEditable === 'true') {
             applyFormattingToContentEditable('underline');
-        } else if (activeElement.tagName === 'INPUT') {
+        } else if (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT') {
             applyFormatting('underline');
         }
     }
 });
+
+//============================
+// FORMATTING BUTTON LISTENERS
+//============================
+
+function attachFormattingListeners() {
+    const boldBtn = document.getElementById('boldBtn');
+    const italicBtn = document.getElementById('italicsBtn');
+    const underlineBtn = document.getElementById('underlineBtn');
+
+    if (boldBtn) {
+        boldBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const activeElement = document.activeElement;
+
+            if (activeElement && activeElement.contentEditable === 'true' && activeElement.classList.contains('cell')) {
+                applyFormattingToContentEditable('bold');
+            } else if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT') && activeElement.classList.contains('cell')) {
+                applyFormatting('bold');
+            } else {
+                alert('Please click on a cell and select text first');
+            }
+        });
+    }
+
+    if (italicBtn) {
+        italicBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const activeElement = document.activeElement;
+
+            if (activeElement && activeElement.contentEditable === 'true' && activeElement.classList.contains('cell')) {
+                applyFormattingToContentEditable('italic');
+            } else if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT') && activeElement.classList.contains('cell')) {
+                applyFormatting('italic');
+            } else {
+                alert('Please click on a cell and select text first');
+            }
+        });
+    }
+
+    if (underlineBtn) {
+        underlineBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const activeElement = document.activeElement;
+
+            if (activeElement && activeElement.contentEditable === 'true' && activeElement.classList.contains('cell')) {
+                applyFormattingToContentEditable('underline');
+            } else if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT') && activeElement.classList.contains('cell')) {
+                applyFormatting('underline');
+            } else {
+                alert('Please click on a cell and select text first');
+            }
+        });
+    }
+}
 
 //============================================
 // UNDO/REDO FUNCTIONALITY
@@ -958,30 +1032,24 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 document.addEventListener('DOMContentLoaded', initializeTable);
 
-//--------------------------UNDO REDO---------------------------------//
-
 //==================================================
-//FIND AND REPLACE
+//FIND AND REPLACE 
 //==================================================
 
-// Select elements
 const findInput = document.querySelector('.find-box');
 const replaceInput = document.querySelector('.replace-box');
 const replaceBtn = document.querySelector('.replace-btn');
 const matchCounter = document.querySelector('.match-counter span');
 const tableBody = document.getElementById('tableBody');
 
-// Function to get all cells
 function getCells() {
-    return tableBody.querySelectorAll('.cell');
+    return tableBody.querySelectorAll('.cell, [contenteditable="true"].cell');
 }
 
-// Find functionality - triggers as user types
 findInput.addEventListener('input', () => {
     const searchTerm = findInput.value.trim().toLowerCase();
     const cells = getCells();
     
-    // If search term is empty, clear highlights and reset counter
     if (!searchTerm) {
         cells.forEach(cell => cell.classList.remove('highlight'));
         matchCounter.textContent = '0';
@@ -990,7 +1058,13 @@ findInput.addEventListener('input', () => {
     
     let matchCount = 0;
     cells.forEach(cell => {
-        const text = cell.value.toLowerCase(); // Use value instead of textContent
+        let text = '';
+        if (cell.tagName === 'INPUT' || cell.tagName === 'TEXTAREA') {
+            text = cell.value.toLowerCase();
+        } else if (cell.contentEditable === 'true') {
+            text = cell.textContent.toLowerCase();
+        }
+        
         if (text.includes(searchTerm)) {
             cell.classList.add('highlight');
             matchCount++;
@@ -1001,22 +1075,153 @@ findInput.addEventListener('input', () => {
     matchCounter.textContent = matchCount;
 });
 
-// Replace functionality - triggers on button click
 replaceBtn.addEventListener('click', () => {
     const searchTerm = findInput.value.trim();
     const replaceTerm = replaceInput.value;
-    if (!searchTerm) return; // Do nothing if no search term
+    if (!searchTerm) return;
+    
+    saveState();
     
     const cells = getCells();
+    let replacedCount = 0;
+    
     cells.forEach(cell => {
         if (cell.classList.contains('highlight')) {
-            const regex = new RegExp(searchTerm, 'gi'); // Case-insensitive replacement
-            cell.value = cell.value.replace(regex, replaceTerm); // Use value instead of textContent
+            const regex = new RegExp(searchTerm, 'gi');
+            const row = parseInt(cell.getAttribute('data-row'));
+            const field = cell.getAttribute('data-field');
+            
+            if (cell.tagName === 'INPUT' || cell.tagName === 'TEXTAREA') {
+                cell.value = cell.value.replace(regex, replaceTerm);
+                if (tableData[row]) {
+                    tableData[row][field] = cell.value;
+                }
+            } else if (cell.contentEditable === 'true') {
+                cell.innerHTML = cell.innerHTML.replace(regex, replaceTerm);
+                if (tableData[row]) {
+                    tableData[row][field] = cell.innerHTML;
+                }
+            }
+            
             cell.classList.remove('highlight');
+            
+            if (tableData[row]) {
+                if (tableData[row].isFromDatabase) {
+                    changedRows.add(row);
+                    tableData[row].hasChanges = true;
+                } else {
+                    newRows.add(row);
+                }
+                updateRowVisualStatus(row);
+                replacedCount++;
+            }
         }
     });
-    matchCounter.textContent = '0'; // Reset counter after replacement
+    
+    matchCounter.textContent = '0';
+    if (replacedCount > 0) {
+        showNotification(`Replaced ${replacedCount} occurrences`, 'success');
+    }
 });
+
+//============================================
+// FORMATTING FUNCTIONS - COMPLETE FIX
+//============================================
+
+function applyFormattingToContentEditable(command) {
+    const selection = window.getSelection();
+    
+    if (!selection.rangeCount || selection.isCollapsed) {
+        alert('Please select text first by dragging your mouse over it');
+        return;
+    }
+    
+    let element = selection.anchorNode;
+    if (element.nodeType === Node.TEXT_NODE) {
+        element = element.parentElement;
+    }
+    
+    const contentEditableDiv = element.closest('[contenteditable="true"]');
+    if (!contentEditableDiv || !contentEditableDiv.classList.contains('cell')) {
+        alert('Please select text in a cell first');
+        return;
+    }
+    
+    document.execCommand(command, false, null);
+    
+    const row = parseInt(contentEditableDiv.getAttribute('data-row'));
+    const field = contentEditableDiv.getAttribute('data-field');
+    if (tableData[row]) {
+        tableData[row][field] = contentEditableDiv.innerHTML;
+        
+        if (tableData[row].isFromDatabase) {
+            changedRows.add(row);
+            tableData[row].hasChanges = true;
+        } else {
+            newRows.add(row);
+        }
+        updateRowVisualStatus(row);
+    }
+    
+    contentEditableDiv.focus();
+}
+
+function addContentEditableListeners(div) {
+    div.addEventListener('focus', function() {
+        this.classList.add('editing');
+    });
+    
+    div.addEventListener('blur', async function() {
+        this.classList.remove('editing');
+        const row = parseInt(this.getAttribute('data-row'));
+        const field = this.getAttribute('data-field');
+        if (tableData[row]) {
+            tableData[row][field] = this.innerHTML;
+            
+            if (tableData[row].isFromDatabase) {
+                const currentHash = createRowHash(tableData[row]);
+                const originalHash = originalData.get(row);
+                
+                if (currentHash !== originalHash) {
+                    changedRows.add(row);
+                    tableData[row].hasChanges = true;
+                }
+            } else {
+                newRows.add(row);
+            }
+            updateRowVisualStatus(row);
+        }
+    });
+    
+    div.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            this.blur();
+            moveToNextCell(this);
+        } else if (e.key === 'Tab') {
+            e.preventDefault();
+            this.blur();
+            moveToNextCell(this);
+        }
+    });
+    
+    div.addEventListener('input', debounce(async function() {
+        const row = parseInt(this.getAttribute('data-row'));
+        const field = this.getAttribute('data-field');
+        
+        if (tableData[row]) {
+            tableData[row][field] = this.innerHTML;
+            
+            if (tableData[row].isFromDatabase) {
+                changedRows.add(row);
+                tableData[row].hasChanges = true;
+            } else {
+                newRows.add(row);
+            }
+            updateRowVisualStatus(row);
+        }
+    }, 300));
+}
 
 //====================================================
 //TABLE OPTIONS
