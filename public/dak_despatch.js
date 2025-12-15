@@ -168,29 +168,66 @@ function parseDate(dateStr) {
 //------TOGGLE SORT MENU------//
 
 function toggleSortMenu(columnKey) {
-  const dropId = `sort-${columnKey}`;              
-  const dropdown = document.getElementById(dropId);
-  if (!dropdown) return;                            
+    const dropId = `sort-${columnKey}`;              
+    const dropdown = document.getElementById(dropId);
+    if (!dropdown) return;                            
 
+    // Close all other dropdowns
+    document.querySelectorAll('.sort-dropdown').forEach(d => {
+        if (d !== dropdown) {
+            d.classList.remove('show');
+            d.classList.remove('show-above');
+        }
+    });
 
-  document.querySelectorAll('.sort-dropdown').forEach(d => {
-    if (d !== dropdown) d.classList.remove('show');
-  });
+    // Toggle current dropdown
+    const wasShown = dropdown.classList.contains('show');
+    dropdown.classList.toggle('show');
 
-  // toggle current one
-  dropdown.classList.toggle('show');
+    // If dropdown is now being shown, position it correctly
+    if (!wasShown) {
+        positionDropdown(dropdown);
+    }
 
-  // one-shot outside-click closer
-  setTimeout(() => {
-    const close = e => {
-      if (!dropdown.contains(e.target) &&
-          !e.target.closest('.hamburger-btn')) {
-        dropdown.classList.remove('show');
-        document.removeEventListener('click', close);
-      }
-    };
-    document.addEventListener('click', close);
-  }, 0);
+    // Close dropdown when clicking outside
+    setTimeout(() => {
+        const close = e => {
+            if (!dropdown.contains(e.target) &&
+                !e.target.closest('.hamburger-btn')) {
+                dropdown.classList.remove('show');
+                dropdown.classList.remove('show-above');
+                document.removeEventListener('click', close);
+            }
+        };
+        document.addEventListener('click', close);
+    }, 0);
+}
+function positionDropdown(dropdown) {
+    const parentTh = dropdown.closest('th');
+    if (!parentTh) return;
+
+    const thRect = parentTh.getBoundingClientRect();
+    const dropdownHeight = dropdown.offsetHeight || 200;
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - thRect.bottom;
+    const spaceAbove = thRect.top;
+
+    // Position horizontally (right-aligned with the th)
+    dropdown.style.right = (window.innerWidth - thRect.right) + 'px';
+    dropdown.style.left = 'auto';
+
+    // Position vertically based on available space
+    if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+        // Show above
+        dropdown.style.top = 'auto';
+        dropdown.style.bottom = (viewportHeight - thRect.top + 2) + 'px';
+        dropdown.classList.add('show-above');
+    } else {
+        // Show below
+        dropdown.style.top = (thRect.bottom + 2) + 'px';
+        dropdown.style.bottom = 'auto';
+        dropdown.classList.remove('show-above');
+    }
 }
 //----------------------------------------SORT COLUMN---------------------------------------------//
 
@@ -245,6 +282,11 @@ function sortColumn(field, order) {
 
 function searchColumn(column) {
     const input = document.querySelector(`input[data-column="${column}"]`);
+    if (!input) {
+        console.error(`Input not found for column: ${column}`);
+        return;
+    }
+    
     const searchTerm = input.value.toLowerCase().trim();
     
     if (searchTerm === '') {
@@ -255,19 +297,38 @@ function searchColumn(column) {
     columnFilters[column] = searchTerm;
     applyAllFilters();
     
-    
-    document.getElementById(`sort-${column}`).classList.remove('show');
+    // Reposition dropdown after filtering
+    const dropdown = document.getElementById(`sort-${column}`);
+    if (dropdown && dropdown.classList.contains('show')) {
+        setTimeout(() => {
+            positionDropdown(dropdown);
+        }, 100);
+    }
 }
+
+window.addEventListener('resize', () => {
+    document.querySelectorAll('.sort-dropdown.show').forEach(dropdown => {
+        positionDropdown(dropdown);
+    });
+});
+
+// Add scroll handler to reposition open dropdowns
+window.addEventListener('scroll', () => {
+    document.querySelectorAll('.sort-dropdown.show').forEach(dropdown => {
+        positionDropdown(dropdown);
+    });
+}, true); 
 
 //--------------------------------------CLEAR COLUMN SEARCH-----------------------------------------//
 
 function clearColumnSearch(column) {
     const input = document.querySelector(`input[data-column="${column}"]`);
-    input.value = '';
+    if (input) {
+        input.value = '';
+    }
     delete columnFilters[column];
     applyAllFilters();
 }
-
 //-------------------------------------APPLY ALL ACTIVE FILTERS--------------------------------------//
 
 function applyAllFilters() {
@@ -280,6 +341,7 @@ function applyAllFilters() {
         
         for (const [column, searchTerm] of Object.entries(columnFilters)) {
             const cellValue = getCellValueByColumn(row, column).toLowerCase();
+            
             if (!cellValue.includes(searchTerm)) {
                 showRow = false;
                 break;
@@ -1331,39 +1393,40 @@ function syncTableDataWithDOM() {
 }
 
 function getCellValueByColumn(row, column) {
-    const allCells = row.querySelectorAll('.cell, [contenteditable="true"].cell');
+    const allCells = row.querySelectorAll('.cell, [contenteditable="true"].cell, input.cell, textarea.cell');
     
     const getCellValue = (cell) => {
         if (!cell) return '';
-        if (cell.tagName === 'INPUT') return cell.value;
-        if (cell.contentEditable === 'true') return cell.textContent; // Use textContent for search
+        if (cell.tagName === 'INPUT' || cell.tagName === 'TEXTAREA') {
+            return cell.value || '';
+        }
+        if (cell.contentEditable === 'true') {
+            return cell.textContent || '';
+        }
         return '';
     };
     
-    switch(column) {
-        case 'date':
-            return getCellValue(allCells[0]);
-        case 'toWhom':
-            return getCellValue(allCells[1]);
-        case 'place':
-            return getCellValue(allCells[3]);
-        case 'subject':
-            return getCellValue(allCells[5]);
-        case 'sentBy':
-            return getCellValue(allCells[7]);
-        default:
-            return '';
-    }
+    // Map columns to their cell indices
+    const columnMapping = {
+        'date': [0],
+        'toWhom': [1, 2],
+        'place': [3, 4],
+        'subject': [5, 6],
+        'sentBy': [7, 8]
+    };
+    
+    const indices = columnMapping[column] || [];
+    const values = indices.map(i => getCellValue(allCells[i])).filter(Boolean);
+    return values.join(' ');
 }
 
 function showNoResultsMessage(show) {
     let message = document.getElementById('no-results-message');
     if (show) {
         if (!message) {
-            message = document.createElement('div');
+            message = document.createElement('tr');
             message.id = 'no-results-message';
-            message.textContent = 'No matching results found';
-            message.style.cssText = 'text-align: center; padding: 20px; color: #666;';
+            message.innerHTML = '<td colspan="100%" style="text-align: center; padding: 20px; color: #666; font-style: italic;">No matching results found</td>';
             document.getElementById('tableBody').appendChild(message);
         }
     } else {
