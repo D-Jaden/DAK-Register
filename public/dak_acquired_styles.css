@@ -645,6 +645,8 @@ body {
     padding: 20px;
     table-layout: fixed;
     overflow-x: hidden !important;
+    overflow-y: visible !important;
+    position: relative;
 }
 
 .excel-table {
@@ -652,11 +654,15 @@ body {
     border-collapse: collapse;
     background: white;
     border-radius: 8px;
-    overflow: hidden;
+    overflow: visible; 
     box-shadow: 0 0 20px rgba(0,0,0,0.1);
-    position :relative;
-    bottom:7rem;
-    left:4rem;
+    position: relative;
+    bottom: 7rem;
+    left: 4rem;
+}
+
+.excel-table thead {
+    overflow: visible !important;
 }
 
 .excel-table th {
@@ -669,6 +675,7 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     border-right: 1px solid #2c3e50;
+    overflow: visible !important; 
 }
 
 .excel-table th i {
@@ -804,14 +811,12 @@ body {
     background-color: rgba(255,255,255,0.2);
 }
 .sort-dropdown {
-    position: absolute;
-    top: 100%;
-    right: 0;
+    position: fixed; 
     background: white;
     border: 1px solid #ddd;
     border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 1000;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2); 
+    z-index: 99999; 
     min-width: 200px;
     display: none;
     overflow: hidden;
