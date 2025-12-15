@@ -150,26 +150,93 @@ function parseDate(dateStr) {
 //=============================
 
 function toggleSortMenu(columnKey) {
-  const dropId = `sort-${columnKey}`;              
-  const dropdown = document.getElementById(dropId);
-  if (!dropdown) return;                            
+    const dropId = `sort-${columnKey}`;              
+    const dropdown = document.getElementById(dropId);
+    if (!dropdown) return;                            
 
-  document.querySelectorAll('.sort-dropdown').forEach(d => {
-    if (d !== dropdown) d.classList.remove('show');
-  });
+    // Close all other dropdowns
+    document.querySelectorAll('.sort-dropdown').forEach(d => {
+        if (d !== dropdown) {
+            d.classList.remove('show');
+            d.classList.remove('show-above');
+        }
+    });
 
-  dropdown.classList.toggle('show');
+    // Toggle current dropdown
+    const wasShown = dropdown.classList.contains('show');
+    dropdown.classList.toggle('show');
 
-  setTimeout(() => {
-    const close = e => {
-      if (!dropdown.contains(e.target) &&
-          !e.target.closest('.hamburger-btn')) {
-        dropdown.classList.remove('show');
-        document.removeEventListener('click', close);
-      }
-    };
-    document.addEventListener('click', close);
-  }, 0);
+    // If dropdown is now being shown, position it correctly
+    if (!wasShown) {
+        positionDropdown(dropdown);
+    }
+
+    // Close dropdown when clicking outside
+    setTimeout(() => {
+        const close = e => {
+            if (!dropdown.contains(e.target) &&
+                !e.target.closest('.hamburger-btn')) {
+                dropdown.classList.remove('show');
+                dropdown.classList.remove('show-above');
+                document.removeEventListener('click', close);
+            }
+        };
+        document.addEventListener('click', close);
+    }, 0);
+}
+
+function positionDropdown(dropdown) {
+    const parentTh = dropdown.closest('th');
+    if (!parentTh) return;
+
+    const thRect = parentTh.getBoundingClientRect();
+    const dropdownHeight = dropdown.offsetHeight || 200;
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - thRect.bottom;
+    const spaceAbove = thRect.top;
+
+    // Position horizontally (right-aligned with the th)
+    dropdown.style.right = (window.innerWidth - thRect.right) + 'px';
+    dropdown.style.left = 'auto';
+
+    // Position vertically based on available space
+    if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+        // Show above
+        dropdown.style.top = 'auto';
+        dropdown.style.bottom = (viewportHeight - thRect.top + 2) + 'px';
+        dropdown.classList.add('show-above');
+    } else {
+        // Show below
+        dropdown.style.top = (thRect.bottom + 2) + 'px';
+        dropdown.style.bottom = 'auto';
+        dropdown.classList.remove('show-above');
+    }
+}
+
+function searchColumn(column) {
+    const input = document.querySelector(`input[data-column="${column}"]`);
+    if (!input) {
+        console.error(`Input not found for column: ${column}`);
+        return;
+    }
+    
+    const searchTerm = input.value.toLowerCase().trim();
+    
+    if (searchTerm === '') {
+        clearColumnSearch(column);
+        return;
+    }
+    
+    columnFilters[column] = searchTerm;
+    applyAllFilters();
+    
+    // Reposition dropdown after filtering
+    const dropdown = document.getElementById(`sort-${column}`);
+    if (dropdown && dropdown.classList.contains('show')) {
+        setTimeout(() => {
+            positionDropdown(dropdown);
+        }, 100);
+    }
 }
 
 function sortColumn(field, order) {
@@ -266,6 +333,18 @@ function applyAllFilters() {
     
     showNoResultsMessage(visibleCount === 0);
 }
+
+window.addEventListener('resize', () => {
+    document.querySelectorAll('.sort-dropdown.show').forEach(dropdown => {
+        positionDropdown(dropdown);
+    });
+});
+
+window.addEventListener('scroll', () => {
+    document.querySelectorAll('.sort-dropdown.show').forEach(dropdown => {
+        positionDropdown(dropdown);
+    });
+}, true);
 
 //==========================================
 //INITIALIZE TABLE
