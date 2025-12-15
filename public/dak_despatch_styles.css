@@ -652,23 +652,30 @@ body {
 /*-----------------------------------------------------------------------*/
 .table-container {
     padding: 20px;
-    table-layout: fixed; /* Keep fixed layout for column widths */
-    overflow-x: hidden !important; /* Allow horizontal scroll if table is too wide */
+    table-layout: fixed;
+    overflow-x: hidden !important;
+    overflow-y: visible !important; 
+    position: relative; 
 }
 
+.excel-table thead {
+    overflow: visible !important;
+}
 .excel-table {
     width: 100%;
     border-collapse: collapse;
     background: white;
     border-radius: 8px;
-    overflow: hidden;
+    overflow: visible;
     box-shadow: 0 0 20px rgba(0,0,0,0.1);
     position :relative;
     bottom:7rem;
     left:4rem;
+    overflow: visible !important;
 }
 
 .excel-table th {
+    position: relative;
     background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
     color: white;
     padding: 15px 12px;
@@ -693,14 +700,14 @@ body {
 }
 
 .excel-table td {
-    padding: 0; /* Remove padding to let cell content control height */
+    padding: 0;
     border: 1px solid #e1e8ed;
     background: white;
     transition: all 0.3s ease;
-    overflow-wrap: break-word; /* Allow word breaking */
-    white-space: normal; /* Allow wrapping */
-    vertical-align: top; /* Align to top for multi-line */
-    height: auto; /* Allow row height to grow */
+    overflow-wrap: break-word;
+    white-space: normal; 
+    vertical-align: top; 
+    height: auto;
 }
 
 .column-header {
@@ -712,30 +719,30 @@ body {
 
 .cell {
     width: 100%;
-    min-height: 53px; /* Minimum height matching original */
-    height: auto; /* Allow growth for wrapped text */
+    min-height: 53px;
+    height: auto; 
     padding: 12px;
     border: none;
     outline: none;
     font-size: 14px;
     font-family: inherit;
     background: transparent;
-    cursor: text; /* Changed to text for editing */
+    cursor: text; 
     transition: all 0.3s ease;
     display: block;
     text-align: left;
     box-sizing: border-box;
-    overflow-wrap: break-word; /* Break long words */
-    word-wrap: break-word; /* Legacy support */
-    white-space: pre-wrap; /* Preserve whitespace but wrap */
-    resize: vertical; /* Allow vertical resize for textareas */
-    line-height: 1.4; /* Better readability for multi-line */
+    overflow-wrap: break-word; 
+    word-wrap: break-word; 
+    white-space: pre-wrap; 
+    resize: vertical; 
+    line-height: 1.4;  
 }
 
 .hindi-cell {
     width: 100%;
-    min-height: 53px; /* Minimum height */
-    height: auto; /* Allow growth */
+    min-height: 53px; 
+    height: auto; 
     padding: 8px 12px;
     border: none;
     outline: none;
@@ -747,10 +754,10 @@ body {
     display: block;
     text-align: left;
     border-top: 1px solid #e1e8ed;
-    overflow-wrap: break-word; /* Break long words */
-    word-wrap: break-word; /* Legacy support */
-    white-space: pre-wrap; /* Preserve whitespace but wrap */
-    resize: vertical; /* Allow vertical resize */
+    overflow-wrap: break-word; 
+    word-wrap: break-word; 
+    white-space: pre-wrap; 
+    resize: vertical; 
     line-height: 1.4;
 }
 
@@ -800,40 +807,48 @@ body {
 .hamburger-menu {
     position: relative;
 }
+
 .hamburger-btn {
     background: none;
     border: none;
     color: white;
     cursor: pointer;
-    padding: 4px;
+    padding: 4px 8px;
     border-radius: 3px;
     transition: background-color 0.2s;
 }
+
 .hamburger-btn:hover {
     background-color: rgba(255,255,255,0.2);
 }
+
 .sort-dropdown {
-    position: absolute;
-    top: 100%;
+    position: fixed;
+    top: calc(100% + 2px); 
+    bottom: auto;
     right: 0;
     background: white;
     border: 1px solid #ddd;
     border-radius: 4px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 1000;
-    min-width: 200px;
+    z-index: 99999;
+    min-width: 250px;
+    max-width: 300px;
     display: none;
-    overflow: hidden;
 }
+
 .sort-dropdown.show {
     display: block;
 }
+
 .dropdown-section {
     border-bottom: 1px solid #eee;
 }
+
 .dropdown-section:last-child {
     border-bottom: none;
 }
+
 .dropdown-header {
     background: #f8f9fa;
     padding: 8px 12px;
@@ -842,8 +857,9 @@ body {
     color: #666;
     text-transform: uppercase;
 }
+
 .sort-option, .search-option {
-    padding: 8px 12px;
+    padding: 10px 12px;
     cursor: pointer;
     color: #333;
     font-size: 14px;
@@ -852,50 +868,59 @@ body {
     align-items: center;
     gap: 8px;
 }
+
 .sort-option:hover, .search-option:hover {
     background-color: #f5f5f5;
 }
+
 .column-search-input {
-    width: 100%;
-    padding: 6px 8px;
-    border: 1px solid rgb(121, 121, 121);
-    border-radius: 3px;
-    font-size: 12px;
-    margin: 8px;
-    width: calc(100% - 16px);
+    width: calc(100% - 24px);
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    margin: 8px 12px;
+    box-sizing: border-box;
 }
+
 .column-search-input:focus {
     outline: none;
     border-color: #4a90e2;
     box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
 }
+
 .search-actions {
     padding: 8px 12px;
     display: flex;
     gap: 8px;
 }
+
 .search-btn {
     flex: 1;
-    padding: 4px 8px;
+    padding: 6px 12px;
     border: 1px solid #ddd;
     background: rgb(75, 151, 214);
     color: white;
-    border-radius: 3px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 12px;
     transition: all 0.2s;
 }
+
 .search-btn:hover {
     background: rgb(57, 142, 212);
 }
+
 .search-btn.clear {
-    background: #399935;
+    background: #28a745;
     color: white;
-    border-color: #38993598;
+    border-color: #28a745;
 }
+
 .search-btn.clear:hover {
-    background: #2e8b2b;
+    background: #218838;
 }
+
 
 
 
@@ -1209,7 +1234,7 @@ body {
     }
 
     .hindi-cell {
-        height: 35px; /* Adjust for smaller screens */
+        height: 35px; 
         font-size: 11px;
     }
 
