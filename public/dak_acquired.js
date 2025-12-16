@@ -349,20 +349,29 @@ window.addEventListener('scroll', () => {
 //==========================================
 //INITIALIZE TABLE
 //==========================================
+let isDataLoaded = false;
+
 function initializeTable() {
     const shouldLoadUserData = localStorage.getItem('shouldLoadUserData');
     const userIsAuthenticated = isAuthenticated();
+
+    if (isDataLoaded) {
+        console.log('⏭️ Data already loaded, skipping...');
+        return;
+    }
     
     if (shouldLoadUserData === 'true' || userIsAuthenticated) {
         localStorage.removeItem('shouldLoadUserData');
         console.log('🔄 Loading user data...');
         loadUserData();
+        isDataLoaded = true; 
     } else {
         console.log('📝 Initializing with empty rows...');
         for (let i = 0; i < 6; i++) {
             addNewRow();
         }
         rebuildTable();
+        isDataLoaded = true; 
     }
     
     setupRowInsertion();
@@ -1252,10 +1261,18 @@ function addRowInsertionListeners(row) {
 //============================================
 
 async function loadUserData() {
+
+    if (window.isLoadingData) {
+        console.log('⏭️ Already loading data, skipping duplicate call...');
+        return;
+    }
+
     if (!isAuthenticated()) {
         console.log('User not authenticated, skipping data load');
         return;
     }
+
+    window.isLoadingData = true;
 
     try {
         console.log('📥 Loading user data...');
@@ -1322,6 +1339,8 @@ async function loadUserData() {
     } catch (error) {
         console.error('❌ Error loading user data:', error);
         initializeTable();
+    } finally {
+        window.isLoadingData = false; 
     }
 }
 
