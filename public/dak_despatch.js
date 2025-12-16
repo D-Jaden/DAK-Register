@@ -365,23 +365,29 @@ function applyAllFilters() {
 //INITIALIZE TABLE
 //==========================================
 function initializeTable() {
+
+    let isDataLoaded = false;
+
     const shouldLoadUserData = localStorage.getItem('shouldLoadUserData');
     const userIsAuthenticated = isAuthenticated();
+
+    if (isDataLoaded) {
+        console.log('⏭️ Data already loaded, skipping...');
+        return;
+    }
     
     if (shouldLoadUserData === 'true' || userIsAuthenticated) {
-        // Clear the flag if it exists
         localStorage.removeItem('shouldLoadUserData');
-        
-        // Load user data instead of initializing empty table
         console.log('🔄 Loading user data...');
         loadUserData();
+        isDataLoaded = true; 
     } else {
-        // Normal initialization with empty rows
         console.log('📝 Initializing with empty rows...');
         for (let i = 0; i < 6; i++) {
             addNewRow();
         }
         rebuildTable();
+        isDataLoaded = true; 
     }
     
     setupRowInsertion();
@@ -1536,10 +1542,18 @@ function addRowInsertionListeners(row) {
 //============================================
 
 async function loadUserData() {
+
+    if (window.isLoadingData) {
+        console.log('⏭️ Already loading data, skipping duplicate call...');
+        return;
+    }
+
     if (!isAuthenticated()) {
         console.log('User not authenticated, skipping data load');
         return;
     }
+
+    window.isLoadingData = true;
 
     try {
         console.log('📥 Loading user data...');
@@ -1614,8 +1628,10 @@ async function loadUserData() {
         
     } catch (error) {
         console.error('❌ Error loading user data:', error);
-        // Don't show error to user, just initialize normally
+        // Don't show error to user 
         initializeTable();
+    } finally {
+        window.isLoadingData = false; 
     }
 }
 
