@@ -84,22 +84,42 @@ document.addEventListener('click', function(event) {
 
 // Function to switch to the other page with flip effect
 function switchPage(targetPage) {
+    // SAVE current table data to sessionStorage before switching
+    sessionStorage.setItem('preservedTableData', JSON.stringify(tableData));
+    sessionStorage.setItem('preservedRowCount', rowCount.toString());
+    
     localStorage.setItem('flipTo', targetPage);
     const flipContainer = document.getElementById('flipContainer');
     flipContainer.classList.add('flip-out');
     setTimeout(() => {
         window.location.href = targetPage === 'despatch' ? 'dak_despatch.html' : 'dak_acquired.html';
-    }, 600); // Match animation duration
+    }, 600);
 }
 
-// On page load, check if flip-in animation should be applied
+// On page load, check if flip-in animation should be applied - UPDATED
 window.addEventListener('load', () => {
     const flipTo = localStorage.getItem('flipTo');
     const currentPage = window.location.pathname.includes('dak_despatch.html') ? 'despatch' : 'acquired';
+    
     if (flipTo === currentPage) {
         const flipContainer = document.getElementById('flipContainer');
         flipContainer.classList.add('flip-in');
         localStorage.removeItem('flipTo');
+        
+        // RESTORE preserved data if switching between pages
+        const preservedData = sessionStorage.getItem('preservedTableData');
+        const preservedRowCount = sessionStorage.getItem('preservedRowCount');
+        
+        if (preservedData && preservedRowCount) {
+            console.log('🔄 Restoring data from previous page...');
+            tableData = JSON.parse(preservedData);
+            rowCount = parseInt(preservedRowCount);
+            rebuildTable();
+            
+            // Clear the preserved data
+            sessionStorage.removeItem('preservedTableData');
+            sessionStorage.removeItem('preservedRowCount');
+        }
     }
 });
 
@@ -365,33 +385,27 @@ function applyAllFilters() {
 //INITIALIZE TABLE
 //==========================================
 function initializeTable() {
-
-    let isDataLoaded = false;
-
-    const shouldLoadUserData = localStorage.getItem('shouldLoadUserData');
-    const userIsAuthenticated = isAuthenticated();
-
-    if (isDataLoaded) {
-        console.log('⏭️ Data already loaded, skipping...');
+    // Check if we've already initialized (using a GLOBAL flag)
+    if (window.tableInitialized) {
+        console.log('⏭️ Table already initialized, skipping...');
         return;
     }
-    
-    if (shouldLoadUserData === 'true' || userIsAuthenticated) {
-        localStorage.removeItem('shouldLoadUserData');
-        console.log('🔄 Loading user data...');
-        loadUserData();
-        isDataLoaded = true; 
+
+    const userIsAuthenticated = isAuthenticated();
+
+    if (userIsAuthenticated) {
+        console.log('🔄 Authenticated user - loading data...');
+        loadUserData(); // This will handle BOTH cases: existing data OR new user
     } else {
-        console.log('📝 Initializing with empty rows...');
+        console.log('📝 Guest user - initializing with 6 empty rows...');
         for (let i = 0; i < 6; i++) {
             addNewRow();
         }
         rebuildTable();
-        isDataLoaded = true; 
     }
     
     setupRowInsertion();
-    
+        
     // Add event listeners with null checks
     const addRowBtn = document.querySelector('.add-row-btn');
     if (addRowBtn) addRowBtn.addEventListener('click', addNewRow);
@@ -521,6 +535,8 @@ function initializeTable() {
 
     // Initialize button states
     updateUndoRedoButtons();
+
+    window.tableInitialized = true;
 }
 
 //=========================
@@ -1542,7 +1558,6 @@ function addRowInsertionListeners(row) {
 //============================================
 
 async function loadUserData() {
-
     if (window.isLoadingData) {
         console.log('⏭️ Already loading data, skipping duplicate call...');
         return;
@@ -1589,11 +1604,10 @@ async function loadUserData() {
             
             // Process loaded data
             tableData = result.data.map((row, index) => {
-                // Store original data hash
                 originalData.set(index, createRowHash(row));
                 
                 return {
-                    id: row.id, // Database ID
+                    id: row.id,
                     serialNo: row.serialNo || index + 1,
                     date: row.date || '',
                     toWhom: row.toWhom || '',
@@ -1609,29 +1623,42 @@ async function loadUserData() {
                 };
             });
 
-            // Update row count
             rowCount = tableData.length;
-            
-            // Rebuild table with loaded data
             rebuildTable();
             
             console.log('✅ User data loaded and displayed');
-            
-            // Show success message
             showNotification(`Loaded ${result.data.length} existing records`, 'success');
             
         } else {
-            console.log('📭 No existing data found for user');
-            // Initialize with empty rows as usual
-            initializeTable();
+            // NEW USER - NO DATA FOUND
+            console.log('📭 No existing data found for user, creating 6 empty rows...');
+            
+            // Clear any existing data
+            tableData = [];
+            rowCount = 0;
+            
+            // Initialize with 6 empty rows for NEW users
+            for (let i = 0; i < 6; i++) {
+                addNewRow();
+            }
+            rebuildTable();
+            
+            showNotification('Welcome! Start entering your data', 'info');
         }
         
     } catch (error) {
         console.error('❌ Error loading user data:', error);
-        // Don't show error to user 
-        initializeTable();
+        showNotification('Error loading data. Starting fresh.', 'error');
+        
+        // Fallback: Create 6 empty rows
+        tableData = [];
+        rowCount = 0;
+        for (let i = 0; i < 6; i++) {
+            addNewRow();
+        }
+        rebuildTable();
     } finally {
-        window.isLoadingData = false; 
+        window.isLoadingData = false;
     }
 }
 
@@ -2081,12 +2108,16 @@ async function saveToDatabase() {
 //============================================
 
 async function translateText(text) {
+    console.log('🔄 Translation requested for:', text);
+    
     // Check cache first
     if (translationCache.has(text)) {
+        console.log('✅ Using cached translation');
         return translationCache.get(text);
     }
     
     try {
+        console.log('📡 Calling translation API...');
         const response = await fetch("https://d-jaden02-en-hi-helsinki-model.hf.space/translate", {
             method: 'POST',
             headers: {
@@ -2098,22 +2129,26 @@ async function translateText(text) {
             })
         });
         
+        console.log('📥 Response status:', response.status);
+        
         if (!response.ok) {
             throw new Error(`API request failed with status ${response.status}`);
         }
         
         const data = await response.json();
+        console.log('📦 Response data:', data);
         
         if (data && data.translated_text) {
             const translated = data.translated_text;
             translationCache.set(text, translated);
+            console.log('✅ Translation successful:', translated);
             return translated;
         } else {
             throw new Error(data.error || 'Invalid response from translation API');
         }
     } catch (error) {
-        console.warn('Translation API unavailable, skipping translation:', error.message);
-        // Return original text instead of failing
+        console.error('❌ Translation error:', error);
+        console.warn('Translation API unavailable, using original text');
         return text;
     }
 }
@@ -2193,11 +2228,20 @@ async function saveData(cell) {
         // Handle automatic translation
         if (translatableColumns.includes(field) && !field.endsWith('Hindi') && value) {
             const hindiField = `${field}Hindi`;
-            const hindiInput = document.querySelector(`input[data-row="${row}"][data-field="${hindiField}"]`);
+            // CHANGED: Look for textarea instead of input
+            const hindiInput = document.querySelector(`textarea[data-row="${row}"][data-field="${hindiField}"]`);
+            
+            console.log('🔍 Looking for Hindi field:', hindiField);
+            console.log('🔍 Found element:', hindiInput);
+            
             if (hindiInput) {
                 // Strip HTML tags for translation
                 const textToTranslate = value.replace(/<[^>]*>/g, '');
+                console.log('🔄 Translating:', textToTranslate);
+                
                 const translatedText = await translateText(textToTranslate);
+                console.log('✅ Translation result:', translatedText);
+                
                 hindiInput.value = translatedText;
                 hindiInput.disabled = false;
                 tableData[row][hindiField] = translatedText;
@@ -2211,6 +2255,8 @@ async function saveData(cell) {
                         tableData[row].hasChanges = true;
                     }
                 }
+            } else {
+                console.warn('⚠️ Hindi textarea not found for field:', hindiField);
             }
         }
         
