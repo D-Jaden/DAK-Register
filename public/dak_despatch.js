@@ -6,7 +6,7 @@ let rowCount = 0;
 let tableData = [];
 let entriesPerPage = 6;
 let currentPage = 1;
-const translatableColumns = ['toWhom', 'place', 'subject', 'sentBy'];
+const translatableColumns = ['receivedFrom', 'subject'];
 let translationCache = new Map();
 
 let originalData = new Map();
@@ -23,23 +23,18 @@ function deepClone(obj) {
     return JSON.parse(JSON.stringify(obj));
 }
 
-// Create a hash of row data for comparison
 function createRowHash(rowData) {
     const relevantData = {
-        date: rowData.date || '',
-        toWhom: rowData.toWhom || '',
-        toWhomHindi: rowData.toWhomHindi || '',
-        place: rowData.place || '',
-        placeHindi: rowData.placeHindi || '',
+        acquiredDate: rowData.acquiredDate || '',
+        receivedFrom: rowData.receivedFrom || '',
+        receivedFromHindi: rowData.receivedFromHindi || '',
+        letterNumber: rowData.letterNumber || '',
         subject: rowData.subject || '',
-        subjectHindi: rowData.subjectHindi || '',
-        sentBy: rowData.sentBy || '',
-        sentByHindi: rowData.sentByHindi || ''
+        subjectHindi: rowData.subjectHindi || ''
     };
     return JSON.stringify(relevantData);
 }
 
-// Debounce utility
 function debounce(func, wait) {
     let timeout;
     return function (...args) {
@@ -61,30 +56,27 @@ function toggleDropdown() {
     container.classList.toggle('active');
 }
 
-// Close mobile menu when clicking outside
 document.addEventListener('click', function(event) {
     const toolbar = document.getElementById('toolbar');
     const toggle = document.querySelector('.mobile-menu-toggle');
     
-    // Check if elements exist before accessing their methods
     if (toolbar && toggle && !toolbar.contains(event.target) && !toggle.contains(event.target)) {
         toolbar.classList.remove('active');
     }
 });
 
-// Close dropdown when clicking outside
 document.addEventListener('click', function(event) {
     const container = document.querySelector('.split-btn-container');
     
-    // Check if element exists before accessing its methods
     if (container && !container.contains(event.target)) {
         container.classList.remove('active');
     }
 });
 
-// Function to switch to the other page with flip effect
 function switchPage(targetPage) {
-    // SAVE current table data to sessionStorage before switching
+    // ⭐ Sync BEFORE saving
+    syncTableDataWithDOM();
+    
     sessionStorage.setItem('preservedTableData', JSON.stringify(tableData));
     sessionStorage.setItem('preservedRowCount', rowCount.toString());
     
@@ -96,7 +88,7 @@ function switchPage(targetPage) {
     }, 600);
 }
 
-// On page load, check if flip-in animation should be applied - UPDATED
+// On page load, check if flip-in animation should be applied
 window.addEventListener('load', () => {
     const flipTo = localStorage.getItem('flipTo');
     const currentPage = window.location.pathname.includes('dak_despatch.html') ? 'despatch' : 'acquired';
@@ -105,55 +97,34 @@ window.addEventListener('load', () => {
         const flipContainer = document.getElementById('flipContainer');
         flipContainer.classList.add('flip-in');
         localStorage.removeItem('flipTo');
-        
-        // RESTORE preserved data if switching between pages
-        const preservedData = sessionStorage.getItem('preservedTableData');
-        const preservedRowCount = sessionStorage.getItem('preservedRowCount');
-        
-        if (preservedData && preservedRowCount) {
-            console.log('🔄 Restoring data from previous page...');
-            tableData = JSON.parse(preservedData);
-            rowCount = parseInt(preservedRowCount);
-            rebuildTable();
-            
-            // Clear the preserved data
-            sessionStorage.removeItem('preservedTableData');
-            sessionStorage.removeItem('preservedRowCount');
-        }
     }
 });
 
 //==========================================
-//DATE FUNCTIONALITY FOR DATE
+//DATE FUNCTIONALITY
 //==========================================
 
 function restrictDateInput(input) {
-    // Remove any non-numeric characters except slashes
     input.value = input.value.replace(/[^0-9/]/g, '');
 
-    // Ensure the format is dd/mm/yyyy
     let value = input.value;
     
-    // Auto-add slashes after day and month
     if (value.length === 2 && !value.includes('/')) {
         input.value = value + '/';
     } else if (value.length === 5 && value.split('/').length === 2) {
         input.value = value + '/';
     }
 
-    // Limit input length to 10 (dd/mm/yyyy)
     if (value.length > 10) {
         input.value = value.slice(0, 10);
     }
 
-    // Validate date format (dd/mm/yyyy)
     if (value.length === 10) {
         const parts = value.split('/');
         const day = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10);
         const year = parseInt(parts[2], 10);
 
-        // Check for valid days in month (basic, without leap year for Feb)
         let isValid = true;
         if (month < 1 || month > 12) isValid = false;
         if (day < 1 || day > 31) isValid = false;
@@ -181,11 +152,10 @@ function parseDate(dateStr) {
     const year = parseInt(parts[2], 10);
     return new Date(year, month, day);
 }
-//=============================
-//=====SORTING COLUMNS=========
-//=============================
 
-//------TOGGLE SORT MENU------//
+//=============================
+//SORTING COLUMNS
+//=============================
 
 function toggleSortMenu(columnKey) {
     const dropId = `sort-${columnKey}`;              
@@ -222,6 +192,7 @@ function toggleSortMenu(columnKey) {
         document.addEventListener('click', close);
     }, 0);
 }
+
 function positionDropdown(dropdown) {
     const parentTh = dropdown.closest('th');
     if (!parentTh) return;
@@ -249,56 +220,6 @@ function positionDropdown(dropdown) {
         dropdown.classList.remove('show-above');
     }
 }
-//----------------------------------------SORT COLUMN---------------------------------------------//
-
-function sortColumn(field, order) {
-    syncTableDataWithDOM();
-    
-    // Separate empty and filled rows
-    const filledRows = [];
-    const emptyRows = [];
-    
-    tableData.forEach((row, index) => {
-        const hasData = Object.values(row).some(value => 
-            value && value.toString().trim() !== ''
-        );
-        if (hasData) {
-            filledRows.push({ ...row, originalIndex: index });
-        } else {
-            emptyRows.push({ ...row, originalIndex: index });
-        }
-    });
-    
-    // Sort only filled rows
-    filledRows.sort((a, b) => {
-        let aValue = a[field] || '';
-        let bValue = b[field] || '';
-        
-        if (field === 'date') {
-            aValue = parseDate(aValue);
-            bValue = parseDate(bValue);
-        } else {
-            aValue = aValue.toString().toLowerCase();
-            bValue = bValue.toString().toLowerCase();
-        }
-        
-        return order === 'asc' ? 
-            (aValue > bValue ? 1 : -1) : 
-            (aValue < bValue ? 1 : -1);
-    });
-    
-    // Rebuild tableData with filled rows first, then empty rows
-    tableData = [...filledRows, ...emptyRows].map(row => {
-        const { originalIndex, ...cleanRow } = row;
-        return cleanRow;
-    });
-    
-    rebuildTable();
-    applyAllFilters();
-    document.querySelectorAll('.sort-dropdown').forEach(d => d.classList.remove('show'));
-}
-
-//-------------------------------------SEARCH SPECIFIC COLUMN-----------------------------------------//
 
 function searchColumn(column) {
     const input = document.querySelector(`input[data-column="${column}"]`);
@@ -326,30 +247,71 @@ function searchColumn(column) {
     }
 }
 
-window.addEventListener('resize', () => {
-    document.querySelectorAll('.sort-dropdown.show').forEach(dropdown => {
-        positionDropdown(dropdown);
+function sortColumn(field, order) {
+    syncTableDataWithDOM();
+    
+    const filledRows = [];
+    const emptyRows = [];
+    
+    tableData.forEach((row, index) => {
+        const hasData = Object.values(row).some(value => 
+            value && value.toString().trim() !== ''
+        );
+        if (hasData) {
+            filledRows.push({ ...row, originalIndex: index });
+        } else {
+            emptyRows.push({ ...row, originalIndex: index });
+        }
     });
-});
-
-// Add scroll handler to reposition open dropdowns
-window.addEventListener('scroll', () => {
-    document.querySelectorAll('.sort-dropdown.show').forEach(dropdown => {
-        positionDropdown(dropdown);
+    
+    filledRows.sort((a, b) => {
+        let aValue = a[field] || '';
+        let bValue = b[field] || '';
+        
+        if (field === 'acquiredDate') {
+            aValue = parseDate(aValue);
+            bValue = parseDate(bValue);
+        } else {
+            aValue = aValue.toString().toLowerCase();
+            bValue = bValue.toString().toLowerCase();
+        }
+        
+        return order === 'asc' ? 
+            (aValue > bValue ? 1 : -1) : 
+            (aValue < bValue ? 1 : -1);
     });
-}, true); 
+    
+    tableData = [...filledRows, ...emptyRows].map(row => {
+        const { originalIndex, ...cleanRow } = row;
+        return cleanRow;
+    });
+    
+    rebuildTable();
+    applyAllFilters();
+    document.querySelectorAll('.sort-dropdown').forEach(d => d.classList.remove('show'));
+}
 
-//--------------------------------------CLEAR COLUMN SEARCH-----------------------------------------//
+function searchColumn(column) {
+    const input = document.querySelector(`input[data-column="${column}"]`);
+    const searchTerm = input.value.toLowerCase().trim();
+    
+    if (searchTerm === '') {
+        clearColumnSearch(column);
+        return;
+    }
+    
+    columnFilters[column] = searchTerm;
+    applyAllFilters();
+    
+    document.getElementById(`sort-${column}`).classList.remove('show');
+}
 
 function clearColumnSearch(column) {
     const input = document.querySelector(`input[data-column="${column}"]`);
-    if (input) {
-        input.value = '';
-    }
+    input.value = '';
     delete columnFilters[column];
     applyAllFilters();
 }
-//-------------------------------------APPLY ALL ACTIVE FILTERS--------------------------------------//
 
 function applyAllFilters() {
     const tbody = document.getElementById('tableBody');
@@ -361,7 +323,6 @@ function applyAllFilters() {
         
         for (const [column, searchTerm] of Object.entries(columnFilters)) {
             const cellValue = getCellValueByColumn(row, column).toLowerCase();
-            
             if (!cellValue.includes(searchTerm)) {
                 showRow = false;
                 break;
@@ -381,16 +342,51 @@ function applyAllFilters() {
     showNoResultsMessage(visibleCount === 0);
 }
 
+window.addEventListener('resize', () => {
+    document.querySelectorAll('.sort-dropdown.show').forEach(dropdown => {
+        positionDropdown(dropdown);
+    });
+});
+
+window.addEventListener('scroll', () => {
+    document.querySelectorAll('.sort-dropdown.show').forEach(dropdown => {
+        positionDropdown(dropdown);
+    });
+}, true);
+
 //==========================================
 //INITIALIZE TABLE
 //==========================================
+let isDataLoaded = false;
+
 function initializeTable() {
-    // Check if we've already initialized (using a GLOBAL flag)
+
     if (window.tableInitialized) {
         console.log('⏭️ Table already initialized, skipping...');
         return;
     }
 
+    const preservedData = sessionStorage.getItem('preservedTableData');
+    const preservedRowCount = sessionStorage.getItem('preservedRowCount');
+    
+    if (preservedData && preservedRowCount) {
+        console.log('🔄 Restoring data from previous page...');
+        tableData = JSON.parse(preservedData);
+        rowCount = parseInt(preservedRowCount);
+        rebuildTable();
+        
+        // Clear the preserved data
+        sessionStorage.removeItem('preservedTableData');
+        sessionStorage.removeItem('preservedRowCount');
+        
+        setupRowInsertion();
+        attachAllEventListeners();
+        window.tableInitialized = true;
+        
+        console.log('✅ Data restored from page switch!');
+        return; 
+    }
+    
     const userIsAuthenticated = isAuthenticated();
 
     if (userIsAuthenticated) {
@@ -405,7 +401,114 @@ function initializeTable() {
     }
     
     setupRowInsertion();
-        
+    
+    const addRowBtn = document.querySelector('.add-row-btn');
+    if (addRowBtn) addRowBtn.addEventListener('click', addNewRow);
+ 
+    const saveBtn = document.querySelector('.save-btn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveToDatabase);
+        console.log('✅ Save button listener attached');
+    } else {
+        console.error('❌ Save button not found!');
+    }
+
+    document.querySelectorAll('.hamburger-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const columnHeader = this.closest('.column-header');
+            const thElement = columnHeader.closest('th');
+            const column = thElement.className;
+
+            const columnMap = {
+                'acquiredDate': 'acquiredDate',
+                'receivedFrom': 'receivedFrom',
+                'letterNumber': 'letterNumber',
+                'subject': 'subject'
+            };
+
+            const field = columnMap[column] || column;
+            toggleSortMenu(field);
+        });
+    });
+
+    const boldBtn = document.getElementById('bold');
+    const italicBtn = document.getElementById('italics');
+    const underlineBtn = document.getElementById('underline');
+
+    if (boldBtn) {
+        boldBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const activeElement = document.activeElement;
+
+            if (activeElement && activeElement.contentEditable === 'true' && activeElement.classList.contains('cell')) {
+                applyFormattingToContentEditable('bold');
+            } else if (activeElement && activeElement.tagName === 'INPUT' && activeElement.classList.contains('cell')) {
+                applyFormatting('bold');
+            } else {
+                alert('Please click on a cell and select text first');
+            }
+        });
+    }
+
+    if (italicBtn) {
+        italicBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const activeElement = document.activeElement;
+
+            if (activeElement && activeElement.contentEditable === 'true' && activeElement.classList.contains('cell')) {
+                applyFormattingToContentEditable('italic');
+            } else if (activeElement && activeElement.tagName === 'INPUT' && activeElement.classList.contains('cell')) {
+                applyFormatting('italic');
+            } else {
+                alert('Please click on a cell and select text first');
+            }
+        });
+    }
+
+    if (underlineBtn) {
+        underlineBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const activeElement = document.activeElement;
+
+            if (activeElement && activeElement.contentEditable === 'true' && activeElement.classList.contains('cell')) {
+                applyFormattingToContentEditable('underline');
+            } else if (activeElement && activeElement.tagName === 'INPUT' && activeElement.classList.contains('cell')) {
+                applyFormatting('underline');
+            } else {
+                alert('Please click on a cell and select text first');
+            }
+        });
+    }
+
+    const undoBtn = document.getElementById('undo');
+    const redoBtn = document.getElementById('redo');
+
+    if (undoBtn) {
+        undoBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            undo();
+        });
+        console.log('✅ Undo button listener attached');
+    }
+
+    if (redoBtn) {
+        redoBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            redo();
+        });
+        console.log('✅ Redo button listener attached');
+    }
+
+    updateUndoRedoButtons();
+    window.tableInitialized = true;
+}
+
+//==========================================
+// HELPER: ATTACH ALL EVENT LISTENERS
+//==========================================
+
+function attachAllEventListeners() {
     // Add event listeners with null checks
     const addRowBtn = document.querySelector('.add-row-btn');
     if (addRowBtn) addRowBtn.addEventListener('click', addNewRow);
@@ -419,31 +522,17 @@ function initializeTable() {
         console.error('❌ Save button not found!');
     }
     
-    //=================
-    //LOAD DATA
-    //=================
-    /*const loadBtn = document.getElementById('loadBtn');
-
-    if (loadBtn) {
-        loadBtn.addEventListener('click', loadUserData);
-        console.log('✅ Load button listener attached');
-    } 
-    else {
-        console.error('❌ Load button not found!');
-    }*/
-    
     //============================
     //SORTING LISTENERS
     //============================
 
     document.querySelectorAll('.hamburger-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
-            e.stopPropagation(); // Prevent event bubbling
+            e.stopPropagation();
             const columnHeader = this.closest('.column-header');
             const thElement = columnHeader.closest('th');
-            const column = thElement.className; // Gets the class name like 'date', 'whomSent', etc.
+            const column = thElement.className;
 
-            // Map class names to field names
             const columnMap = {
                 'date': 'date',
                 'whomSent': 'toWhom',
@@ -533,10 +622,7 @@ function initializeTable() {
         console.log('✅ Redo button listener attached');
     }
 
-    // Initialize button states
     updateUndoRedoButtons();
-
-    window.tableInitialized = true;
 }
 
 //=========================
@@ -568,7 +654,6 @@ function changeFontSize(selectElement) {
   table.style.fontSize = size;
   tdata.style.fontSize = size;
 
-  // Optional: apply to each <td> and <th>
   const cells = table.querySelectorAll("td, th");
   cells.forEach(cell => cell.style.fontSize = size);
 }
@@ -576,20 +661,13 @@ function changeFontSize(selectElement) {
 let currentEditingCell = null;
 let redoStack = [];
 
-// Initialize the formatting system
 function initializeTextFormatting() {
     console.log('Initializing text formatting...');
-    
-    
     makeTableCellsEditable();
-    
     setupFormattingButtons();
-    
     setupKeyboardShortcuts();
-
 }
 
-// MAKE TABLE CELLS EDITABLE
 function makeTableCellsEditable() {
     const tableBody = document.getElementById('tableBody');
     if (!tableBody) {
@@ -597,13 +675,11 @@ function makeTableCellsEditable() {
         return;
     }
 
-    // MAKE EXISTING TABLES EDITABLE 
     const cells = tableBody.querySelectorAll('td');
     cells.forEach(cell => {
         setupCellEditing(cell);
     });
 
-    //HANDLE DYNAMICALLY ADDED ROWS
     const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
             mutation.addedNodes.forEach(function(node) {
@@ -916,6 +992,7 @@ document.addEventListener('keydown', function(e) {
 // FORMATTING BUTTON LISTENERS
 //============================
 
+// Make sure these are attached in initializeTable()
 function attachFormattingListeners() {
     const boldBtn = document.getElementById('boldBtn');
     const italicBtn = document.getElementById('italicsBtn');
@@ -975,7 +1052,6 @@ let undoStack = [];
 let redoStacks = [];
 const MAX_HISTORY = 50;
 
-// Save state to undo stack
 function saveState() {
     const currentState = {
         data: deepClone(tableData),
@@ -984,68 +1060,57 @@ function saveState() {
     
     undoStack.push(currentState);
     
-    // Limit stack size
     if (undoStack.length > MAX_HISTORY) {
         undoStack.shift();
     }
     
-    // Clear redo stack when new action is performed
     redoStacks = [];
     
     updateUndoRedoButtons();
 }
 
-// Undo function
 function undo() {
     if (undoStack.length === 0) {
         alert('Nothing to undo');
         return;
     }
     
-    // Save current state to redo stack
     const currentState = {
         data: deepClone(tableData),
         timestamp: Date.now()
     };
     redoStacks.push(currentState);
 
-    // Get previous state
     const previousState = undoStack.pop();
     tableData = deepClone(previousState.data);
     
-    // Rebuild table with previous state
     rebuildTable();
     
     updateUndoRedoButtons();
     showNotification('Undo successful', 'info');
 }
 
-// Redo function
 function redo() {
     if (redoStacks.length === 0) {
         alert('Nothing to redo');
         return;
     }
     
-    // Save current state to undo stack
     const currentState = {
         data: deepClone(tableData),
         timestamp: Date.now()
     };
     undoStack.push(currentState);
     
-    // Get next state
     const nextState = redoStacks.pop();
     tableData = deepClone(nextState.data);
     
-    // Rebuild table with next state
     rebuildTable();
     
     updateUndoRedoButtons();
     showNotification('Redo successful', 'info');
 }
 
-// Update button states
 function updateUndoRedoButtons() {
     const undoBtn = document.getElementById('undo');
     const redoBtn = document.getElementById('redo');
@@ -1063,7 +1128,6 @@ function updateUndoRedoButtons() {
     }
 }
 
-// Debounced save state for input events
 const debouncedSaveState = debounce(saveState, 1000);
 
 //===========================
@@ -1077,7 +1141,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const entriesBtn = document.querySelector('.entries-btn');
     const dropdownItems = document.querySelectorAll('.dropdown-menu li a');
 
-    // Toggle dropdown on clicking the toggle button
     dropdownToggle.addEventListener('click', () => {
         splitBtnContainer.classList.toggle('active');
         dropdownToggle.setAttribute(
@@ -1085,6 +1148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             splitBtnContainer.classList.contains('active')
         );
     });
+    
     entriesBtn.addEventListener('click', () => {
         splitBtnContainer.classList.toggle('active');
         dropdownToggle.setAttribute(
@@ -1117,7 +1181,7 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('DOMContentLoaded', initializeTable);
 
 //==================================================
-//FIND AND REPLACE 
+//FIND AND REPLACE
 //==================================================
 
 const findInput = document.querySelector('.find-box');
@@ -1127,7 +1191,7 @@ const matchCounter = document.querySelector('.match-counter span');
 const tableBody = document.getElementById('tableBody');
 
 function getCells() {
-    return tableBody.querySelectorAll('.cell, [contenteditable="true"].cell');
+    return tableBody.querySelectorAll('.cell');
 }
 
 findInput.addEventListener('input', () => {
@@ -1142,13 +1206,7 @@ findInput.addEventListener('input', () => {
     
     let matchCount = 0;
     cells.forEach(cell => {
-        let text = '';
-        if (cell.tagName === 'INPUT' || cell.tagName === 'TEXTAREA') {
-            text = cell.value.toLowerCase();
-        } else if (cell.contentEditable === 'true') {
-            text = cell.textContent.toLowerCase();
-        }
-        
+        const text = cell.value.toLowerCase();
         if (text.includes(searchTerm)) {
             cell.classList.add('highlight');
             matchCount++;
@@ -1164,155 +1222,20 @@ replaceBtn.addEventListener('click', () => {
     const replaceTerm = replaceInput.value;
     if (!searchTerm) return;
     
-    saveState();
-    
     const cells = getCells();
-    let replacedCount = 0;
-    
     cells.forEach(cell => {
         if (cell.classList.contains('highlight')) {
             const regex = new RegExp(searchTerm, 'gi');
-            const row = parseInt(cell.getAttribute('data-row'));
-            const field = cell.getAttribute('data-field');
-            
-            if (cell.tagName === 'INPUT' || cell.tagName === 'TEXTAREA') {
-                cell.value = cell.value.replace(regex, replaceTerm);
-                if (tableData[row]) {
-                    tableData[row][field] = cell.value;
-                }
-            } else if (cell.contentEditable === 'true') {
-                cell.innerHTML = cell.innerHTML.replace(regex, replaceTerm);
-                if (tableData[row]) {
-                    tableData[row][field] = cell.innerHTML;
-                }
-            }
-            
+            cell.value = cell.value.replace(regex, replaceTerm);
             cell.classList.remove('highlight');
-            
-            if (tableData[row]) {
-                if (tableData[row].isFromDatabase) {
-                    changedRows.add(row);
-                    tableData[row].hasChanges = true;
-                } else {
-                    newRows.add(row);
-                }
-                updateRowVisualStatus(row);
-                replacedCount++;
-            }
         }
     });
-    
     matchCounter.textContent = '0';
-    if (replacedCount > 0) {
-        showNotification(`Replaced ${replacedCount} occurrences`, 'success');
-    }
 });
-
-//============================================
-// FORMATTING FUNCTIONS - COMPLETE FIX
-//============================================
-
-function applyFormattingToContentEditable(command) {
-    const selection = window.getSelection();
-    
-    if (!selection.rangeCount || selection.isCollapsed) {
-        alert('Please select text first by dragging your mouse over it');
-        return;
-    }
-    
-    let element = selection.anchorNode;
-    if (element.nodeType === Node.TEXT_NODE) {
-        element = element.parentElement;
-    }
-    
-    const contentEditableDiv = element.closest('[contenteditable="true"]');
-    if (!contentEditableDiv || !contentEditableDiv.classList.contains('cell')) {
-        alert('Please select text in a cell first');
-        return;
-    }
-    
-    document.execCommand(command, false, null);
-    
-    const row = parseInt(contentEditableDiv.getAttribute('data-row'));
-    const field = contentEditableDiv.getAttribute('data-field');
-    if (tableData[row]) {
-        tableData[row][field] = contentEditableDiv.innerHTML;
-        
-        if (tableData[row].isFromDatabase) {
-            changedRows.add(row);
-            tableData[row].hasChanges = true;
-        } else {
-            newRows.add(row);
-        }
-        updateRowVisualStatus(row);
-    }
-    
-    contentEditableDiv.focus();
-}
-
-function addContentEditableListeners(div) {
-    div.addEventListener('focus', function() {
-        this.classList.add('editing');
-    });
-    
-    div.addEventListener('blur', async function() {
-        this.classList.remove('editing');
-        const row = parseInt(this.getAttribute('data-row'));
-        const field = this.getAttribute('data-field');
-        if (tableData[row]) {
-            tableData[row][field] = this.innerHTML;
-            
-            if (tableData[row].isFromDatabase) {
-                const currentHash = createRowHash(tableData[row]);
-                const originalHash = originalData.get(row);
-                
-                if (currentHash !== originalHash) {
-                    changedRows.add(row);
-                    tableData[row].hasChanges = true;
-                }
-            } else {
-                newRows.add(row);
-            }
-            updateRowVisualStatus(row);
-        }
-    });
-    
-    div.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            this.blur();
-            moveToNextCell(this);
-        } else if (e.key === 'Tab') {
-            e.preventDefault();
-            this.blur();
-            moveToNextCell(this);
-        }
-    });
-    
-    div.addEventListener('input', debounce(async function() {
-        const row = parseInt(this.getAttribute('data-row'));
-        const field = this.getAttribute('data-field');
-        
-        if (tableData[row]) {
-            tableData[row][field] = this.innerHTML;
-            
-            if (tableData[row].isFromDatabase) {
-                changedRows.add(row);
-                tableData[row].hasChanges = true;
-            } else {
-                newRows.add(row);
-            }
-            updateRowVisualStatus(row);
-        }
-    }, 300));
-}
 
 //====================================================
 //TABLE OPTIONS
 //====================================================
-
-
-//-------------------------------ADD NEW ROW--------------------------------------//
 
 function addNewRow() {
     rowCount++;
@@ -1320,36 +1243,32 @@ function addNewRow() {
     const row = document.createElement('tr');
     
     const rowData = {
-        //serialNo: rowCount,
-        date: '',
-        toWhom: '',
-        toWhomHindi: '',
-        place: '',
-        placeHindi: '',
+        acquiredDate: '',
+        receivedFrom: '',
+        receivedFromHindi: '',
+        letterNumber: '',
         subject: '',
         subjectHindi: '',
-        sentBy: '',
-        sentByHindi: ''
+        signature: ''
     };
     tableData.push(rowData);
+    
     row.innerHTML = `
         <td class="row-number">${rowCount}</td>
-        <td><input type="text" class="cell" required data-row="${rowCount-1}" data-field="date" placeholder="Enter date..." style="height: 53px;"></td> <!-- Keep as input for date (no wrapping needed) -->
+        <td><input type="text" class="cell" required data-row="${rowCount-1}" data-field="acquiredDate" placeholder="Enter date..." style="height: 53px;"></td>
         <td>
-            <textarea class="cell english-cell" required data-row="${rowCount-1}" data-field="toWhom" placeholder="Enter recipient..." style="resize: vertical;"></textarea>
-            <textarea class="cell hindi-cell" data-row="${rowCount-1}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+            <textarea class="cell english-cell" required data-row="${rowCount-1}" data-field="receivedFrom" placeholder="Enter sender..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${rowCount-1}" data-field="receivedFromHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <textarea class="cell english-cell" required data-row="${rowCount-1}" data-field="place" placeholder="Enter place..." style="resize: vertical;"></textarea>
-            <textarea class="cell hindi-cell" data-row="${rowCount-1}" data-field="placeHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+            <input type="text" class="cell" required data-row="${rowCount-1}" data-field="letterNumber" placeholder="Enter letter number..." style="height: 53px;">
         </td>
         <td>
             <textarea class="cell english-cell" required data-row="${rowCount-1}" data-field="subject" placeholder="Enter subject..." style="resize: vertical;"></textarea>
             <textarea class="cell hindi-cell" data-row="${rowCount-1}" data-field="subjectHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <textarea class="cell english-cell" required data-row="${rowCount-1}" data-field="sentBy" placeholder="Mode of sending..." style="resize: vertical;"></textarea>
-            <textarea class="cell hindi-cell" data-row="${rowCount-1}" data-field="sentByHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+            <input type="text" class="cell english-cell" data-row="${rowCount-1}" data-field="signature" placeholder="Signature..." style="height: 53px;">
         </td>
     `;
 
@@ -1363,10 +1282,7 @@ function addNewRow() {
     addRowInsertionListeners(row);
 }
 
-//-------------------------------------MOVE TO NEXT CELL---------------------------------------------//
-
 function moveToNextCell(currentCell) {
-    // Get all cells including both input and contentEditable divs
     const allCells = Array.from(document.querySelectorAll('.cell, [contenteditable="true"].cell'));
     const currentIndex = allCells.indexOf(currentCell);
     
@@ -1377,78 +1293,82 @@ function moveToNextCell(currentCell) {
         setTimeout(() => {
             const newCells = Array.from(document.querySelectorAll('.cell, [contenteditable="true"].cell'));
             if (newCells.length > 0) {
-                newCells[newCells.length - 10].focus();
+                newCells[newCells.length - 7].focus();
             }
         }, 100);
     }
 }
 
-// Sync table data with DOM
 function syncTableDataWithDOM() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
     
     rows.forEach((row, index) => {
-        if (tableData[index]) {
-            // Get all cells in the row (both input and contentEditable)
-            const allCells = row.querySelectorAll('.cell, [contenteditable="true"].cell');
-            
-            // Extract values based on whether it's an input or contentEditable
-            const getCellValue = (cell) => {
-                if (!cell) return '';
-                if (cell.tagName === 'INPUT') return cell.value;
-                if (cell.contentEditable === 'true') return cell.innerHTML;
-                return '';
+        if (!tableData[index]) {
+            tableData[index] = {
+                acquiredDate: '',
+                receivedFrom: '',
+                receivedFromHindi: '',
+                letterNumber: '',
+                subject: '',
+                subjectHindi: '',
+                signature: ''
             };
-            
-            tableData[index].date = getCellValue(allCells[0]);
-            tableData[index].toWhom = getCellValue(allCells[1]);
-            tableData[index].toWhomHindi = getCellValue(allCells[2]);
-            tableData[index].place = getCellValue(allCells[3]);
-            tableData[index].placeHindi = getCellValue(allCells[4]);
-            tableData[index].subject = getCellValue(allCells[5]);
-            tableData[index].subjectHindi = getCellValue(allCells[6]);
-            tableData[index].sentBy = getCellValue(allCells[7]);
-            tableData[index].sentByHindi = getCellValue(allCells[8]);
         }
+        
+        const allCells = row.querySelectorAll('.cell, [contenteditable="true"].cell');
+        
+        const getCellValue = (cell) => {
+            if (!cell) return '';
+            if (cell.tagName === 'INPUT') return cell.value;
+            if (cell.tagName === 'TEXTAREA') return cell.value;
+            if (cell.contentEditable === 'true') return cell.innerHTML;
+            return '';
+        };
+        
+        if (allCells[0]) tableData[index].acquiredDate = getCellValue(allCells[0]);
+        if (allCells[1]) tableData[index].receivedFrom = getCellValue(allCells[1]);
+        if (allCells[2]) tableData[index].receivedFromHindi = getCellValue(allCells[2]);
+        if (allCells[3]) tableData[index].letterNumber = getCellValue(allCells[3]);
+        if (allCells[4]) tableData[index].subject = getCellValue(allCells[4]);
+        if (allCells[5]) tableData[index].subjectHindi = getCellValue(allCells[5]);
+        if (allCells[6]) tableData[index].signature = getCellValue(allCells[6]);
     });
 }
 
 function getCellValueByColumn(row, column) {
-    const allCells = row.querySelectorAll('.cell, [contenteditable="true"].cell, input.cell, textarea.cell');
+    const allCells = row.querySelectorAll('.cell, [contenteditable="true"].cell');
     
     const getCellValue = (cell) => {
         if (!cell) return '';
-        if (cell.tagName === 'INPUT' || cell.tagName === 'TEXTAREA') {
-            return cell.value || '';
-        }
-        if (cell.contentEditable === 'true') {
-            return cell.textContent || '';
-        }
+        if (cell.tagName === 'INPUT') return cell.value;
+        if (cell.tagName === 'TEXTAREA') return cell.value;
+        if (cell.contentEditable === 'true') return cell.textContent;
         return '';
     };
     
-    // Map columns to their cell indices
-    const columnMapping = {
-        'date': [0],
-        'toWhom': [1, 2],
-        'place': [3, 4],
-        'subject': [5, 6],
-        'sentBy': [7, 8]
-    };
-    
-    const indices = columnMapping[column] || [];
-    const values = indices.map(i => getCellValue(allCells[i])).filter(Boolean);
-    return values.join(' ');
+    switch(column) {
+        case 'acquiredDate':
+            return getCellValue(allCells[0]);
+        case 'receivedFrom':
+            return getCellValue(allCells[1]);
+        case 'letterNumber':
+            return getCellValue(allCells[3]);
+        case 'subject':
+            return getCellValue(allCells[4]);
+        default:
+            return '';
+    }
 }
 
 function showNoResultsMessage(show) {
     let message = document.getElementById('no-results-message');
     if (show) {
         if (!message) {
-            message = document.createElement('tr');
+            message = document.createElement('div');
             message.id = 'no-results-message';
-            message.innerHTML = '<td colspan="100%" style="text-align: center; padding: 20px; color: #666; font-style: italic;">No matching results found</td>';
+            message.textContent = 'No matching results found';
+            message.style.cssText = 'text-align: center; padding: 20px; color: #666;';
             document.getElementById('tableBody').appendChild(message);
         }
     } else {
@@ -1458,63 +1378,6 @@ function showNoResultsMessage(show) {
     }
 }
 
-//------------------------------------------TOGGLE SORT MENU-------------------------------------------//
-
-function sortColumn(field, order) {
-    syncTableDataWithDOM();
-    
-    // Separate empty and filled rows
-    const filledRows = [];
-    const emptyRows = [];
-    
-    tableData.forEach((row, index) => {
-        const hasData = Object.values(row).some(value => 
-            value && value.toString().trim() !== ''
-        );
-        if (hasData) {
-            filledRows.push({ ...row, originalIndex: index });
-        } else {
-            emptyRows.push({ ...row, originalIndex: index });
-        }
-    });
-    
-    // Sort only filled rows
-    filledRows.sort((a, b) => {
-        let aValue = a[field] || '';
-        let bValue = b[field] || '';
-        
-        if (field === 'date') {
-            aValue = parseDate(aValue);
-            bValue = parseDate(bValue);
-            return order === 'asc' ? 
-                (aValue > bValue ? 1 : -1) : 
-                (aValue < bValue ? 1 : -1);
-        } else {
-            // Convert to string and lowercase for text comparison
-            aValue = aValue.toString().toLowerCase();
-            bValue = bValue.toString().toLowerCase();
-            
-            if (order === 'asc') {
-                return aValue.localeCompare(bValue);
-            } else {
-                return bValue.localeCompare(aValue);
-            }
-        }
-    });
-    
-    // Rebuild tableData with filled rows first, then empty rows
-    tableData = [...filledRows, ...emptyRows].map(row => {
-        const { originalIndex, ...cleanRow } = row;
-        return cleanRow;
-    });
-    
-    rebuildTable();
-    applyAllFilters();
-    document.querySelectorAll('.sort-dropdown').forEach(d => d.classList.remove('show'));
-}
-
-//ROW INSERTION
-
 function setupRowInsertion() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
@@ -1522,8 +1385,6 @@ function setupRowInsertion() {
         addRowInsertionListeners(row);
     });
 }
-
-// ADD ROW LISTENERS
 
 function addRowInsertionListeners(row) {
     const insertBtn = document.createElement('div');
@@ -1573,7 +1434,7 @@ async function loadUserData() {
     try {
         console.log('📥 Loading user data...');
         
-        const response = await fetch('/api/despatch/load', {
+        const response = await fetch('/api/acquired/load', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -1597,27 +1458,23 @@ async function loadUserData() {
         if (result.success && result.data && result.data.length > 0) {
             console.log(`📊 Loaded ${result.data.length} existing records`);
             
-            // Store original data for comparison
             originalData.clear();
             changedRows.clear();
             newRows.clear();
             
-            // Process loaded data
             tableData = result.data.map((row, index) => {
                 originalData.set(index, createRowHash(row));
                 
                 return {
                     id: row.id,
                     serialNo: row.serialNo || index + 1,
-                    date: row.date || '',
-                    toWhom: row.toWhom || '',
-                    toWhomHindi: row.toWhomHindi || '',
-                    place: row.place || '',
-                    placeHindi: row.placeHindi || '',
+                    acquiredDate: row.acquiredDate || '',
+                    receivedFrom: row.receivedFrom || '',
+                    receivedFromHindi: row.receivedFromHindi || '',
+                    letterNumber: row.letterNumber || '',
                     subject: row.subject || '',
                     subjectHindi: row.subjectHindi || '',
-                    sentBy: row.sentBy || '',
-                    sentByHindi: row.sentByHindi || '',
+                    signature: row.signature || '',
                     isFromDatabase: true,
                     hasChanges: false
                 };
@@ -1666,8 +1523,6 @@ async function loadUserData() {
 //SMALL FEATURES
 //=====================================================
 
-// INSERT ROW AFTER ANOTHER ROW
-
 function insertRowAfter(targetRow) {
     const tbody = document.getElementById('tableBody');
     const targetIndex = Array.from(tbody.children).indexOf(targetRow);
@@ -1676,37 +1531,32 @@ function insertRowAfter(targetRow) {
     const newRow = document.createElement('tr');
     
     const rowData = {
-        //serialNo: rowCount,
-        date: '',
-        toWhom: '',
-        toWhomHindi: '',
-        place: '',
-        placeHindi: '',
+        acquiredDate: '',
+        receivedFrom: '',
+        receivedFromHindi: '',
+        letterNumber: '',
         subject: '',
         subjectHindi: '',
-        sentBy: '',
-        sentByHindi: ''
+        signature: ''
     };
     tableData.splice(targetIndex + 1, 0, rowData);
     
     newRow.innerHTML = `
         <td class="row-number">${rowCount}</td>
-        <td><input type="text" class="cell" required data-row="${targetIndex + 1}" data-field="date" placeholder="dd-mm-yyyy" style="height: 53px;"></td>
+        <td><input type="text" class="cell" required data-row="${targetIndex + 1}" data-field="acquiredDate" placeholder="dd/mm/yyyy" style="height: 53px;"></td>
         <td>
-            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="toWhom" placeholder="Enter recipient..." style="resize: vertical;"></textarea>
-            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="receivedFrom" placeholder="Enter sender..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="receivedFromHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="place" placeholder="Enter place..." style="resize: vertical;"></textarea>
-            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="placeHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+            <input type="text" class="cell" required data-row="${targetIndex + 1}" data-field="letterNumber" placeholder="Enter letter number..." style="height: 53px;">
         </td>
         <td>
             <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="subject" placeholder="Enter subject..." style="resize: vertical;"></textarea>
             <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="subjectHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="sentBy" placeholder="Mode of sending..." style="resize: vertical;"></textarea>
-            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="sentByHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+            <input type="text" class="cell english-cell" data-row="${targetIndex + 1}" data-field="signature" placeholder="Signature..." style="height: 53px;">
         </td>
     `;
     
@@ -1722,7 +1572,6 @@ function insertRowAfter(targetRow) {
     cells[0].focus();
 }
 
-//UPDATE ROW NUMBERS
 function updateRowNumbers() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
@@ -1734,8 +1583,6 @@ function updateRowNumbers() {
         }
     });
 }
-
-//SHOW CONTEXT MENUS
 
 function showContextMenu(event, row) {
     const existingMenu = document.querySelector('.context-menu');
@@ -1782,16 +1629,12 @@ function showContextMenu(event, row) {
     });
 }
 
-//INSERT ROW AT INDEX
-
 function insertRowAt(index) {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
     if (index === 0) insertRowBefore(rows[0]);
     else insertRowAfter(rows[index - 1]);
 }
-
-// INSERT ROW BEFORE TARGET
 
 function insertRowBefore(targetRow) {
     const tbody = document.getElementById('tableBody');
@@ -1802,36 +1645,32 @@ function insertRowBefore(targetRow) {
     
     const rowData = {
         serialNo: rowCount,
-        date: '',
-        toWhom: '',
-        toWhomHindi: '',
-        place: '',
-        placeHindi: '',
+        acquiredDate: '',
+        receivedFrom: '',
+        receivedFromHindi: '',
+        letterNumber: '',
         subject: '',
         subjectHindi: '',
-        sentBy: '',
-        sentByHindi: ''
+        signature: ''
     };
     tableData.splice(targetIndex, 0, rowData);
     
     newRow.innerHTML = `
         <td class="row-number">${rowCount}</td>
-        <td><input type="text" class="cell" required data-row="${targetIndex + 1}" data-field="date" placeholder="dd-mm-yyyy" style="height: 53px;"></td>
+        <td><input type="text" class="cell" required data-row="${targetIndex}" data-field="acquiredDate" placeholder="dd/mm/yyyy" style="height: 53px;"></td>
         <td>
-            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="toWhom" placeholder="Enter recipient..." style="resize: vertical;"></textarea>
-            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+            <textarea class="cell english-cell" required data-row="${targetIndex}" data-field="receivedFrom" placeholder="Enter sender..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${targetIndex}" data-field="receivedFromHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="place" placeholder="Enter place..." style="resize: vertical;"></textarea>
-            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="placeHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+            <input type="text" class="cell" required data-row="${targetIndex}" data-field="letterNumber" placeholder="Enter letter number..." style="height: 53px;">
         </td>
         <td>
-            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="subject" placeholder="Enter subject..." style="resize: vertical;"></textarea>
-            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="subjectHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+            <textarea class="cell english-cell" required data-row="${targetIndex}" data-field="subject" placeholder="Enter subject..." style="resize: vertical;"></textarea>
+            <textarea class="cell hindi-cell" data-row="${targetIndex}" data-field="subjectHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="sentBy" placeholder="Mode of sending..." style="resize: vertical;"></textarea>
-            <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="sentByHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+            <input type="text" class="cell english-cell" data-row="${targetIndex}" data-field="signature" placeholder="Signature..." style="height: 53px;">
         </td>
     `;
     
@@ -1847,8 +1686,6 @@ function insertRowBefore(targetRow) {
     cells[0].focus();
 }
 
-//DELETE ROW
-
 function deleteRow(row, index) {
     const tbody = document.getElementById('tableBody');
     if (tbody.children.length <= 1) {
@@ -1862,10 +1699,8 @@ function deleteRow(row, index) {
     rowCount--;
 }
 
-//ADD CELL EVENT LISTENERS
-
 function addCellEventListeners(cell) {
-    if (cell.getAttribute('data-field') === 'date') {
+    if (cell.getAttribute('data-field') === 'acquiredDate') {
         cell.placeholder = 'dd/mm/yyyy';
         cell.addEventListener('input', () => restrictDateInput(cell));
         cell.addEventListener('blur', () => restrictDateInput(cell));
@@ -1899,15 +1734,13 @@ function addCellEventListeners(cell) {
         await saveData(this);
     }, 300));
 }
-//----------------------------------------------SAVE THINGY-------------------------------------------//
 
 //==============================================
 // DATABASE INTEGRATION FUNCTIONS
 //==============================================
 
-// Validate row data - checks if all required fields are filled
 function validateRowData(rowData, rowIndex) {
-    const requiredFields = ['date', 'toWhom', 'place', 'subject', 'sentBy'];
+    const requiredFields = ['acquiredDate', 'receivedFrom', 'letterNumber', 'subject'];
     const missingFields = [];
     
     for (const field of requiredFields) {
@@ -1926,41 +1759,40 @@ function validateRowData(rowData, rowIndex) {
     return { isValid: true };
 }
 
-// Get filled rows from table data
 function getFilledRows() {
     const filledRows = [];
     const validationErrors = [];
     let foundFirstEmpty = false; 
     
-        for (let index = 0; index < tableData.length; index++) {
-            const rowData = tableData[index];
-            // Check if at least one field is filled (excluding serialNo)
-            const hasData = Object.values(rowData).some(value =>
-                value && value.toString().trim() !== '' && value !== index + 1
-            );
-        
-            if (hasData) {
-                if (foundFirstEmpty) {
-                    validationErrors.push(
-                        `Row ${index}: Has empty fields. Please fill all required fields before Saving.` // rows in-between cannot be empty 
-                    );
-                }
-                const validation = validateRowData(rowData, index);
-                if (validation.isValid) {
-                    filledRows.push({
-                        ...rowData,
-                        serialNo: index + 1
-                    });
-                } else {
-                    validationErrors.push(validation.error);
-                }
+    for (let index = 0; index < tableData.length; index++) {
+        const rowData = tableData[index];
+        const hasData = Object.values(rowData).some(value =>
+            value && value.toString().trim() !== '' && value !== index + 1
+        );
+    
+        if (hasData) {
+            if (foundFirstEmpty) {
+                validationErrors.push(
+                    `Row ${index}: Has empty fields. Please fill all required fields before Saving.`
+                );
             }
-            else{
-                foundFirstEmpty = true; // mark that we found an empty row
+            const validation = validateRowData(rowData, index);
+            if (validation.isValid) {
+                filledRows.push({
+                    ...rowData,
+                    serialNo: index + 1
+                });
+            } else {
+                validationErrors.push(validation.error);
             }
         }
+        else{
+            foundFirstEmpty = true;
+        }
+    }
     return { filledRows, validationErrors };
 }
+
 //=============================
 //SAVE TO DATABASE
 //=============================
@@ -1972,10 +1804,8 @@ async function saveToDatabase() {
         return;
     }
 
-    // Sync table data with DOM first
     syncTableDataWithDOM();
 
-    // Get only changed and new rows
     const changedRowsData = [];
     const newRowsData = [];
     
@@ -2028,7 +1858,7 @@ async function saveToDatabase() {
         saveBtn.textContent = '⏳ Saving Changes...';
         saveBtn.disabled = true;
 
-        const response = await fetch('/api/despatch/save-changes', {
+        const response = await fetch('/api/acquired/save-changes', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -2055,7 +1885,6 @@ async function saveToDatabase() {
         const result = await response.json();
         
         if (result.success) {
-            // Update tracking after successful save
             changedRows.forEach(rowIndex => {
                 if (tableData[rowIndex]) {
                     originalData.set(rowIndex, createRowHash(tableData[rowIndex]));
@@ -2074,7 +1903,6 @@ async function saveToDatabase() {
             changedRows.clear();
             newRows.clear();
             
-            // Update visual indicators
             document.querySelectorAll('.row-changed, .row-new').forEach(row => {
                 row.classList.remove('row-changed', 'row-new');
             });
@@ -2102,22 +1930,16 @@ async function saveToDatabase() {
     }
 }
 
-
 //============================================
 //TRANSLATION
 //============================================
 
 async function translateText(text) {
-    console.log('🔄 Translation requested for:', text);
-    
-    // Check cache first
     if (translationCache.has(text)) {
-        console.log('✅ Using cached translation');
         return translationCache.get(text);
     }
     
     try {
-        console.log('📡 Calling translation API...');
         const response = await fetch("https://d-jaden02-en-hi-helsinki-model.hf.space/translate", {
             method: 'POST',
             headers: {
@@ -2129,31 +1951,24 @@ async function translateText(text) {
             })
         });
         
-        console.log('📥 Response status:', response.status);
-        
         if (!response.ok) {
             throw new Error(`API request failed with status ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('📦 Response data:', data);
         
         if (data && data.translated_text) {
             const translated = data.translated_text;
             translationCache.set(text, translated);
-            console.log('✅ Translation successful:', translated);
             return translated;
         } else {
             throw new Error(data.error || 'Invalid response from translation API');
         }
     } catch (error) {
-        console.error('❌ Translation error:', error);
-        console.warn('Translation API unavailable, using original text');
+        console.warn('Translation API unavailable, skipping translation:', error.message);
         return text;
     }
 }
-
-//FASTER TRANSLATION ALT
 
 async function translateTextBatch(texts) {
     try {
@@ -2181,7 +1996,7 @@ async function translateTextBatch(texts) {
                     translations[texts[index]] = result.translated_text;
                     translationCache.set(texts[index], result.translated_text);
                 } else {
-                    translations[texts[index]] = texts[index]; // Fallback to original
+                    translations[texts[index]] = texts[index];
                 }
             });
             return translations;
@@ -2190,14 +2005,11 @@ async function translateTextBatch(texts) {
         }
     } catch (error) {
         console.error('Batch translation error:', error);
-        // Return original texts as fallback
         const fallback = {};
         texts.forEach(text => fallback[text] = text);
         return fallback;
     }
 }
-
-//SAVE DATA AND HANDLE TRANSLATION
 
 async function saveData(cell) {
     const row = parseInt(cell.getAttribute('data-row'));
@@ -2208,8 +2020,8 @@ async function saveData(cell) {
         const oldValue = tableData[row][field];
         tableData[row][field] = value;
 
-        // Check if this is a change from original data
-        if (tableData[row].isFromDatabase) {
+        // Track changes (skip signature field as it's not required)
+        if (field !== 'signature' && tableData[row].isFromDatabase) {
             const currentHash = createRowHash(tableData[row]);
             const originalHash = originalData.get(row);
             
@@ -2221,31 +2033,30 @@ async function saveData(cell) {
                 changedRows.delete(row);
                 tableData[row].hasChanges = false;
             }
-        } else {
+        } else if (field !== 'signature') {
             newRows.add(row);
         }
 
-        // Handle automatic translation
+        // Handle automatic translation for translatable columns
+        // translatableColumns = ['receivedFrom', 'subject']
         if (translatableColumns.includes(field) && !field.endsWith('Hindi') && value) {
             const hindiField = `${field}Hindi`;
-            // CHANGED: Look for textarea instead of input
-            const hindiInput = document.querySelector(`textarea[data-row="${row}"][data-field="${hindiField}"]`);
             
-            console.log('🔍 Looking for Hindi field:', hindiField);
-            console.log('🔍 Found element:', hindiInput);
+            // IMPORTANT: Look for TEXTAREA (not input) for Hindi fields
+            const hindiInput = document.querySelector(`textarea[data-row="${row}"][data-field="${hindiField}"]`);
             
             if (hindiInput) {
                 // Strip HTML tags for translation
                 const textToTranslate = value.replace(/<[^>]*>/g, '');
-                console.log('🔄 Translating:', textToTranslate);
                 
                 const translatedText = await translateText(textToTranslate);
-                console.log('✅ Translation result:', translatedText);
-                
+
+                // Update the Hindi textarea
                 hindiInput.value = translatedText;
                 hindiInput.disabled = false;
                 tableData[row][hindiField] = translatedText;
                 
+                // Mark as changed if needed
                 if (tableData[row].isFromDatabase) {
                     const currentHash = createRowHash(tableData[row]);
                     const originalHash = originalData.get(row);
@@ -2256,13 +2067,15 @@ async function saveData(cell) {
                     }
                 }
             } else {
-                console.warn('⚠️ Hindi textarea not found for field:', hindiField);
+                console.warn(`⚠️ Hindi textarea not found for field: ${hindiField}`);
+                console.warn(`   Looking for: textarea[data-row="${row}"][data-field="${hindiField}"]`);
             }
         }
         
         updateRowVisualStatus(row);
     }
 }
+
 //============================================
 // VISUAL INDICATORS FOR CHANGED ROWS
 //============================================
@@ -2294,11 +2107,11 @@ function updateRowVisualStatus(rowIndex) {
 //================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    const logoutBtn = document.getElementById('logoutBtn');
+    const logoutBtn = document.querySelector('.logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            if (confirm('Are you sure you want to logout?Remember To Save')) {
+            if (confirm('Are you sure you want to logout? Remember To Save')) {
                 window.location.href = 'login.html';
             }
         });
@@ -2318,19 +2131,15 @@ function exportToPDF() {
         return;
     }
 
-    // Clone the entire table
     const clone = original.cloneNode(true);
 
-    /* 1. Remove UI elements from headers */
     clone.querySelectorAll('.hamburger-menu, .sort-dropdown, .insert-row-btn').forEach(el => el.remove());
     
-    /* 2. Clean up row styling */
     clone.querySelectorAll('.row-changed, .row-new').forEach(r => {
         r.classList.remove('row-changed', 'row-new');
         r.style.borderLeft = 'none';
     });
 
-    /* 3. Clean up header cells - keep only the text */
     clone.querySelectorAll('thead th').forEach(th => {
         const columnHeader = th.querySelector('.column-header');
         if (columnHeader) {
@@ -2341,7 +2150,6 @@ function exportToPDF() {
         }
     });
 
-    /* 4. Process all rows in tbody */
     clone.querySelectorAll('tbody tr').forEach(row => {
         const cells = row.querySelectorAll('td');
         
@@ -2354,7 +2162,7 @@ function exportToPDF() {
                 return;
             }
             
-            const inputs = cell.querySelectorAll('input.cell');
+            const inputs = cell.querySelectorAll('input.cell, textarea.cell');
             const contentEditables = cell.querySelectorAll('[contenteditable="true"].cell');
             
             if (contentEditables.length > 0) {
@@ -2415,12 +2223,11 @@ function exportToPDF() {
         });
     });
 
-    /* 5. Add comprehensive styling */
     const style = document.createElement('style');
     style.textContent = `
         @page {
             size: A3 landscape;
-            margin: 2mm; /* Reduced margin */
+            margin: 2mm;
         }
     
         html, body {
@@ -2433,7 +2240,7 @@ function exportToPDF() {
     
         .pdf-wrapper {
             width: 100%;
-            margin-left: -5mm; /* Shift left by 5mm */
+            margin-left: -5mm;
             padding: 0;
             text-align: left;
         }
@@ -2442,7 +2249,7 @@ function exportToPDF() {
             width: 100%;
             border-collapse: collapse;
             font-family: Arial, "Segoe UI", sans-serif;
-            font-size: 12px; /* Increased font size */
+            font-size: 12px;
             table-layout: fixed;
             margin-left: 0 !important;
         }
@@ -2468,7 +2275,7 @@ function exportToPDF() {
             text-align: center !important;
             font-weight: 600 !important;
             border: 1px solid #2c3e50 !important;
-            font-size: 14px !important; /* Increased header font size */
+            font-size: 14px !important;
             word-wrap: break-word !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -2479,7 +2286,7 @@ function exportToPDF() {
             padding: 5px 3px !important;
             vertical-align: middle !important;
             text-align: center !important;
-            font-size: 12px !important; /* Increased cell font size */
+            font-size: 12px !important;
             line-height: 1.25 !important;
             word-wrap: break-word !important;
         }
@@ -2501,29 +2308,26 @@ function exportToPDF() {
             print-color-adjust: exact !important;
         }
     
-        /* Adjusted column width proportions for full A3 landscape (~404mm) */
         th:nth-child(1), td:nth-child(1) { width: 5% !important; }
-        th:nth-child(2), td:nth-child(2) { width: 10% !important; }
-        th:nth-child(3), td:nth-child(3) { width: 20% !important; }
+        th:nth-child(2), td:nth-child(2) { width: 12% !important; }
+        th:nth-child(3), td:nth-child(3) { width: 22% !important; }
         th:nth-child(4), td:nth-child(4) { width: 15% !important; }
-        th:nth-child(5), td:nth-child(5) { width: 25% !important; }
-        th:nth-child(6), td:nth-child(6) { width: 25% !important; }
+        th:nth-child(5), td:nth-child(5) { width: 28% !important; }
+        th:nth-child(6), td:nth-child(6) { width: 18% !important; }
     `;
     
     clone.appendChild(style);
     
-    /* 6. Wrap table to control alignment */
     const wrapper = document.createElement('div');
     wrapper.classList.add('pdf-wrapper');
     wrapper.appendChild(clone);
     
-    /* 7. PDF generation options */
     const opt = {
-        margin: [2, 1, 2, 2], // Reduced margins
-        filename: `DAK_Despatch_${new Date().toISOString().split('T')[0]}.pdf`,
+        margin: [2, 1, 2, 2],
+        filename: `DAK_Acquired_${new Date().toISOString().split('T')[0]}.pdf`,
         image: { type: 'jpeg', quality: 0.99 },
         html2canvas: {
-            scale: 1.8, // Reduced scale to fit content on one page
+            scale: 1.8,
             useCORS: true,
             logging: false,
             letterRendering: true,
@@ -2542,7 +2346,6 @@ function exportToPDF() {
         }
     };
     
-    /* 8. Generate PDF */
     html2pdf()
         .set(opt)
         .from(wrapper)
@@ -2562,24 +2365,20 @@ function rebuildTable() {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
 
-    // Ensure enough rows for the current page
     const requiredRows = entriesPerPage * currentPage;
     while (tableData.length < requiredRows) {
         const rowData = {
-            date: '',
-            toWhom: '',
-            toWhomHindi: '',
-            place: '',
-            placeHindi: '',
+            acquiredDate: '',
+            receivedFrom: '',
+            receivedFromHindi: '',
+            letterNumber: '',
             subject: '',
             subjectHindi: '',
-            sentBy: '',
-            sentByHindi: ''
+            signature: ''
         };
         tableData.push(rowData);
     }
 
-    // PAGINATION LOGIC
     const startIdx = (currentPage - 1) * entriesPerPage;
     const endIdx = Math.min(startIdx + entriesPerPage, tableData.length);
     const pageRows = tableData.slice(startIdx, endIdx);
@@ -2588,57 +2387,47 @@ function rebuildTable() {
         const serialNumber = startIdx + index + 1;
         const row = document.createElement('tr');
         
-        // Check if data contains HTML formatting
         const hasHTMLFormatting = (text) => {
             return text && (text.includes('<strong>') || text.includes('<em>') || text.includes('<u>'));
         };
         
-        // Updated: Create cell content - textarea/input for non-formatted, contentEditable for formatted
-        const createCellContent = (field, value, isEnglish = true, isDate = false) => {
+        const createCellContent = (field, value, isEnglish = true, isDate = false, isSignature = false) => {
             const className = isEnglish ? 'cell english-cell' : 'cell hindi-cell';
-            const placeholder = isDate ? 'Enter date...' : (isEnglish ? 'Enter text...' : 'Hindi translation...');
-            const required = isDate || (isEnglish && !field.endsWith('Hindi')) ? 'required' : '';
+            const placeholder = isDate ? 'Enter date...' : (isSignature ? 'Signature...' : (isEnglish ? 'Enter text...' : 'Hindi translation...'));
+            const required = (isDate || (isEnglish && !field.endsWith('Hindi') && !isSignature)) ? 'required' : '';
             const disabled = !isEnglish && !value ? 'disabled' : '';
             
             if (hasHTMLFormatting(value)) {
-                // Use contenteditable div for formatted text (supports wrapping via CSS)
                 return `<div contenteditable="true" class="${className}" data-row="${startIdx + index}" data-field="${field}" style="width: 100%; min-height: 53px; height: auto; padding: 12px; border: none; outline: none; resize: none;">${value || ''}</div>`;
-            } else if (isDate) {
-                // Date always uses input (no wrapping needed)
+            } else if (isDate || isSignature || field === 'letterNumber') {
                 return `<input type="text" class="${className}" ${required} data-row="${startIdx + index}" data-field="${field}" placeholder="${placeholder}" value="${value || ''}" style="height: 53px; resize: none;">`;
             } else {
-                // Use textarea for text fields (enables wrapping)
                 return `<textarea class="${className}" ${required} data-row="${startIdx + index}" data-field="${field}" placeholder="${placeholder}" ${disabled} rows="2" style="resize: vertical; min-height: 53px; height: auto;">${value || ''}</textarea>`;
             }
         };
         
         row.innerHTML = `
             <td class="row-number">${serialNumber}</td>
-            <td>${createCellContent('date', rowData.date, true, true)}</td> <!-- Date: input or contenteditable -->
+            <td>${createCellContent('acquiredDate', rowData.acquiredDate, true, true)}</td>
             <td>
-                ${createCellContent('toWhom', rowData.toWhom, true, false)}
-                ${createCellContent('toWhomHindi', rowData.toWhomHindi, false, false)}
+                ${createCellContent('receivedFrom', rowData.receivedFrom, true, false)}
+                ${createCellContent('receivedFromHindi', rowData.receivedFromHindi, false, false)}
             </td>
             <td>
-                ${createCellContent('place', rowData.place, true, false)}
-                ${createCellContent('placeHindi', rowData.placeHindi, false, false)}
+                ${createCellContent('letterNumber', rowData.letterNumber, true, false)}
             </td>
             <td>
                 ${createCellContent('subject', rowData.subject, true, false)}
                 ${createCellContent('subjectHindi', rowData.subjectHindi, false, false)}
             </td>
-            <td>
-                ${createCellContent('sentBy', rowData.sentBy, true, false)}
-                ${createCellContent('sentByHindi', rowData.sentByHindi, false, false)}
-            </td>
+            <td>${createCellContent('signature', rowData.signature, true, false, true)}</td>
         `;
         tbody.appendChild(row);
 
-        // Add listeners to all cells (both input/textarea and contentEditable)
         const cells = row.querySelectorAll('.cell, [contenteditable="true"]');
         cells.forEach(cell => {
             if (cell.tagName === 'INPUT' || cell.tagName === 'TEXTAREA') {
-                addCellEventListeners(cell); // Handles both inputs and textareas
+                addCellEventListeners(cell);
             } else if (cell.contentEditable === 'true') {
                 addContentEditableListeners(cell);
             }
@@ -2655,14 +2444,13 @@ function rebuildTable() {
 //============================================
 
 function hasRequiredFields(rowData) {
-    const requiredFields = ['date', 'toWhom', 'place', 'subject', 'sentBy'];
+    const requiredFields = ['acquiredDate', 'receivedFrom', 'letterNumber', 'subject'];
     return requiredFields.every(field => 
         rowData[field] && rowData[field].toString().trim() !== ''
     );
 }
 
 function showNotification(message, type = 'info') {
-    // Create notification element if it doesn't exist
     let notification = document.getElementById('notification');
     if (!notification) {
         notification = document.createElement('div');
@@ -2682,7 +2470,6 @@ function showNotification(message, type = 'info') {
         document.body.appendChild(notification);
     }
     
-    // Set color based on type
     const colors = {
         success: '#4CAF50',
         error: '#f44336',
@@ -2693,7 +2480,6 @@ function showNotification(message, type = 'info') {
     notification.textContent = message;
     notification.style.opacity = '1';
     
-    // Hide after 3 seconds
     setTimeout(() => {
         notification.style.opacity = '0';
     }, 3000);
@@ -2733,3 +2519,12 @@ function renderPaginationControls() {
         }
     };
 }
+
+// Add PDF button event listener
+document.addEventListener('DOMContentLoaded', function() {
+    const pdfBtn = document.getElementById('pdfView');
+    if (pdfBtn) {
+        pdfBtn.addEventListener('click', exportToPDF);
+        console.log('✅ PDF button listener attached');
+    }
+});
