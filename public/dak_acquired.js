@@ -74,7 +74,9 @@ document.addEventListener('click', function(event) {
 });
 
 function switchPage(targetPage) {
-    // SAVE current table data to sessionStorage before switching
+    // ⭐ Sync BEFORE saving
+    syncTableDataWithDOM();
+    
     sessionStorage.setItem('preservedTableData', JSON.stringify(tableData));
     sessionStorage.setItem('preservedRowCount', rowCount.toString());
     
@@ -86,7 +88,7 @@ function switchPage(targetPage) {
     }, 600);
 }
 
-// On page load, check if flip-in animation should be applied - UPDATED
+// On page load, check if flip-in animation should be applied
 window.addEventListener('load', () => {
     const flipTo = localStorage.getItem('flipTo');
     const currentPage = window.location.pathname.includes('dak_despatch.html') ? 'despatch' : 'acquired';
@@ -95,21 +97,6 @@ window.addEventListener('load', () => {
         const flipContainer = document.getElementById('flipContainer');
         flipContainer.classList.add('flip-in');
         localStorage.removeItem('flipTo');
-        
-        // RESTORE preserved data if switching between pages
-        const preservedData = sessionStorage.getItem('preservedTableData');
-        const preservedRowCount = sessionStorage.getItem('preservedRowCount');
-        
-        if (preservedData && preservedRowCount) {
-            console.log('🔄 Restoring data from previous page...');
-            tableData = JSON.parse(preservedData);
-            rowCount = parseInt(preservedRowCount);
-            rebuildTable();
-            
-            // Clear the preserved data
-            sessionStorage.removeItem('preservedTableData');
-            sessionStorage.removeItem('preservedRowCount');
-        }
     }
 });
 
@@ -379,6 +366,27 @@ function initializeTable() {
         return;
     }
 
+    const preservedData = sessionStorage.getItem('preservedTableData');
+    const preservedRowCount = sessionStorage.getItem('preservedRowCount');
+    
+    if (preservedData && preservedRowCount) {
+        console.log('🔄 Restoring data from previous page...');
+        tableData = JSON.parse(preservedData);
+        rowCount = parseInt(preservedRowCount);
+        rebuildTable();
+        
+        // Clear the preserved data
+        sessionStorage.removeItem('preservedTableData');
+        sessionStorage.removeItem('preservedRowCount');
+        
+        setupRowInsertion();
+        attachAllEventListeners();
+        window.tableInitialized = true;
+        
+        console.log('✅ Data restored from page switch!');
+        return; 
+    }
+    
     const userIsAuthenticated = isAuthenticated();
 
     if (userIsAuthenticated) {
@@ -494,6 +502,127 @@ function initializeTable() {
 
     updateUndoRedoButtons();
     window.tableInitialized = true;
+}
+
+//==========================================
+// HELPER: ATTACH ALL EVENT LISTENERS
+//==========================================
+
+function attachAllEventListeners() {
+    // Add event listeners with null checks
+    const addRowBtn = document.querySelector('.add-row-btn');
+    if (addRowBtn) addRowBtn.addEventListener('click', addNewRow);
+ 
+    // Save button listener
+    const saveBtn = document.querySelector('.save-btn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveToDatabase);
+        console.log('✅ Save button listener attached');
+    } else {
+        console.error('❌ Save button not found!');
+    }
+    
+    //============================
+    //SORTING LISTENERS
+    //============================
+
+    document.querySelectorAll('.hamburger-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const columnHeader = this.closest('.column-header');
+            const thElement = columnHeader.closest('th');
+            const column = thElement.className;
+
+            const columnMap = {
+                'date': 'date',
+                'whomSent': 'toWhom',
+                'place': 'place',
+                'subject': 'subject',
+                'sentBy': 'sentBy'
+            };
+
+            const field = columnMap[column] || column;
+            toggleSortMenu(field);
+        });
+    });
+
+    //============================
+    // FORMATTING BUTTON LISTENERS
+    //============================
+
+    const boldBtn = document.getElementById('boldBtn');
+    const italicBtn = document.getElementById('italicsBtn');
+    const underlineBtn = document.getElementById('underlineBtn');
+
+    if (boldBtn) {
+        boldBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const activeElement = document.activeElement;
+
+            if (activeElement && activeElement.contentEditable === 'true' && activeElement.classList.contains('cell')) {
+                applyFormattingToContentEditable('bold');
+            } else if (activeElement && activeElement.tagName === 'INPUT' && activeElement.classList.contains('cell')) {
+                applyFormatting('bold');
+            } else {
+                alert('Please click on a cell and select text first');
+            }
+        });
+    }
+
+    if (italicBtn) {
+        italicBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const activeElement = document.activeElement;
+
+            if (activeElement && activeElement.contentEditable === 'true' && activeElement.classList.contains('cell')) {
+                applyFormattingToContentEditable('italic');
+            } else if (activeElement && activeElement.tagName === 'INPUT' && activeElement.classList.contains('cell')) {
+                applyFormatting('italic');
+            } else {
+                alert('Please click on a cell and select text first');
+            }
+        });
+    }
+
+    if (underlineBtn) {
+        underlineBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const activeElement = document.activeElement;
+
+            if (activeElement && activeElement.contentEditable === 'true' && activeElement.classList.contains('cell')) {
+                applyFormattingToContentEditable('underline');
+            } else if (activeElement && activeElement.tagName === 'INPUT' && activeElement.classList.contains('cell')) {
+                applyFormatting('underline');
+            } else {
+                alert('Please click on a cell and select text first');
+            }
+        });
+    }
+
+    //============================
+    // UNDO/REDO BUTTON LISTENERS
+    //============================
+
+    const undoBtn = document.getElementById('undo');
+    const redoBtn = document.getElementById('redo');
+
+    if (undoBtn) {
+        undoBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            undo();
+        });
+        console.log('✅ Undo button listener attached');
+    }
+
+    if (redoBtn) {
+        redoBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            redo();
+        });
+        console.log('✅ Redo button listener attached');
+    }
+
+    updateUndoRedoButtons();
 }
 
 //=========================
@@ -1175,25 +1304,35 @@ function syncTableDataWithDOM() {
     const rows = tbody.querySelectorAll('tr');
     
     rows.forEach((row, index) => {
-        if (tableData[index]) {
-            const allCells = row.querySelectorAll('.cell, [contenteditable="true"].cell');
-            
-            const getCellValue = (cell) => {
-                if (!cell) return '';
-                if (cell.tagName === 'INPUT') return cell.value;
-                if (cell.tagName === 'TEXTAREA') return cell.value;
-                if (cell.contentEditable === 'true') return cell.innerHTML;
-                return '';
+        if (!tableData[index]) {
+            tableData[index] = {
+                acquiredDate: '',
+                receivedFrom: '',
+                receivedFromHindi: '',
+                letterNumber: '',
+                subject: '',
+                subjectHindi: '',
+                signature: ''
             };
-            
-            tableData[index].acquiredDate = getCellValue(allCells[0]);
-            tableData[index].receivedFrom = getCellValue(allCells[1]);
-            tableData[index].receivedFromHindi = getCellValue(allCells[2]);
-            tableData[index].letterNumber = getCellValue(allCells[3]);
-            tableData[index].subject = getCellValue(allCells[4]);
-            tableData[index].subjectHindi = getCellValue(allCells[5]);
-            tableData[index].signature = getCellValue(allCells[6]);
         }
+        
+        const allCells = row.querySelectorAll('.cell, [contenteditable="true"].cell');
+        
+        const getCellValue = (cell) => {
+            if (!cell) return '';
+            if (cell.tagName === 'INPUT') return cell.value;
+            if (cell.tagName === 'TEXTAREA') return cell.value;
+            if (cell.contentEditable === 'true') return cell.innerHTML;
+            return '';
+        };
+        
+        if (allCells[0]) tableData[index].acquiredDate = getCellValue(allCells[0]);
+        if (allCells[1]) tableData[index].receivedFrom = getCellValue(allCells[1]);
+        if (allCells[2]) tableData[index].receivedFromHindi = getCellValue(allCells[2]);
+        if (allCells[3]) tableData[index].letterNumber = getCellValue(allCells[3]);
+        if (allCells[4]) tableData[index].subject = getCellValue(allCells[4]);
+        if (allCells[5]) tableData[index].subjectHindi = getCellValue(allCells[5]);
+        if (allCells[6]) tableData[index].signature = getCellValue(allCells[6]);
     });
 }
 
@@ -1881,6 +2020,7 @@ async function saveData(cell) {
         const oldValue = tableData[row][field];
         tableData[row][field] = value;
 
+        // Track changes (skip signature field as it's not required)
         if (field !== 'signature' && tableData[row].isFromDatabase) {
             const currentHash = createRowHash(tableData[row]);
             const originalHash = originalData.get(row);
@@ -1897,16 +2037,26 @@ async function saveData(cell) {
             newRows.add(row);
         }
 
+        // Handle automatic translation for translatable columns
+        // translatableColumns = ['receivedFrom', 'subject']
         if (translatableColumns.includes(field) && !field.endsWith('Hindi') && value) {
             const hindiField = `${field}Hindi`;
+            
+            // IMPORTANT: Look for TEXTAREA (not input) for Hindi fields
             const hindiInput = document.querySelector(`textarea[data-row="${row}"][data-field="${hindiField}"]`);
+            
             if (hindiInput) {
+                // Strip HTML tags for translation
                 const textToTranslate = value.replace(/<[^>]*>/g, '');
+                
                 const translatedText = await translateText(textToTranslate);
+
+                // Update the Hindi textarea
                 hindiInput.value = translatedText;
                 hindiInput.disabled = false;
                 tableData[row][hindiField] = translatedText;
                 
+                // Mark as changed if needed
                 if (tableData[row].isFromDatabase) {
                     const currentHash = createRowHash(tableData[row]);
                     const originalHash = originalData.get(row);
@@ -1916,6 +2066,9 @@ async function saveData(cell) {
                         tableData[row].hasChanges = true;
                     }
                 }
+            } else {
+                console.warn(`⚠️ Hindi textarea not found for field: ${hindiField}`);
+                console.warn(`   Looking for: textarea[data-row="${row}"][data-field="${hindiField}"]`);
             }
         }
         
