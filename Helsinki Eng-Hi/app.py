@@ -1,13 +1,16 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from transformers import MarianMTModel, MarianTokenizer
 import torch
 import logging
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+CORS(app)
 
 # Global variables for model and tokenizer
 model = None
