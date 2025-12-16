@@ -74,6 +74,10 @@ document.addEventListener('click', function(event) {
 });
 
 function switchPage(targetPage) {
+    // SAVE current table data to sessionStorage before switching
+    sessionStorage.setItem('preservedTableData', JSON.stringify(tableData));
+    sessionStorage.setItem('preservedRowCount', rowCount.toString());
+    
     localStorage.setItem('flipTo', targetPage);
     const flipContainer = document.getElementById('flipContainer');
     flipContainer.classList.add('flip-out');
@@ -82,13 +86,30 @@ function switchPage(targetPage) {
     }, 600);
 }
 
+// On page load, check if flip-in animation should be applied - UPDATED
 window.addEventListener('load', () => {
     const flipTo = localStorage.getItem('flipTo');
     const currentPage = window.location.pathname.includes('dak_despatch.html') ? 'despatch' : 'acquired';
+    
     if (flipTo === currentPage) {
         const flipContainer = document.getElementById('flipContainer');
         flipContainer.classList.add('flip-in');
         localStorage.removeItem('flipTo');
+        
+        // RESTORE preserved data if switching between pages
+        const preservedData = sessionStorage.getItem('preservedTableData');
+        const preservedRowCount = sessionStorage.getItem('preservedRowCount');
+        
+        if (preservedData && preservedRowCount) {
+            console.log('🔄 Restoring data from previous page...');
+            tableData = JSON.parse(preservedData);
+            rowCount = parseInt(preservedRowCount);
+            rebuildTable();
+            
+            // Clear the preserved data
+            sessionStorage.removeItem('preservedTableData');
+            sessionStorage.removeItem('preservedRowCount');
+        }
     }
 });
 
@@ -352,26 +373,23 @@ window.addEventListener('scroll', () => {
 let isDataLoaded = false;
 
 function initializeTable() {
-    const shouldLoadUserData = localStorage.getItem('shouldLoadUserData');
-    const userIsAuthenticated = isAuthenticated();
 
-    if (isDataLoaded) {
-        console.log('⏭️ Data already loaded, skipping...');
+    if (window.tableInitialized) {
+        console.log('⏭️ Table already initialized, skipping...');
         return;
     }
-    
-    if (shouldLoadUserData === 'true' || userIsAuthenticated) {
-        localStorage.removeItem('shouldLoadUserData');
-        console.log('🔄 Loading user data...');
-        loadUserData();
-        isDataLoaded = true; 
+
+    const userIsAuthenticated = isAuthenticated();
+
+    if (userIsAuthenticated) {
+        console.log('🔄 Authenticated user - loading data...');
+        loadUserData(); // This will handle BOTH cases: existing data OR new user
     } else {
-        console.log('📝 Initializing with empty rows...');
+        console.log('📝 Guest user - initializing with 6 empty rows...');
         for (let i = 0; i < 6; i++) {
             addNewRow();
         }
         rebuildTable();
-        isDataLoaded = true; 
     }
     
     setupRowInsertion();
@@ -475,6 +493,7 @@ function initializeTable() {
     }
 
     updateUndoRedoButtons();
+    window.tableInitialized = true;
 }
 
 //=========================
@@ -1261,7 +1280,6 @@ function addRowInsertionListeners(row) {
 //============================================
 
 async function loadUserData() {
-
     if (window.isLoadingData) {
         console.log('⏭️ Already loading data, skipping duplicate call...');
         return;
@@ -1317,30 +1335,48 @@ async function loadUserData() {
                     letterNumber: row.letterNumber || '',
                     subject: row.subject || '',
                     subjectHindi: row.subjectHindi || '',
-                    signature: '',
+                    signature: row.signature || '',
                     isFromDatabase: true,
                     hasChanges: false
                 };
             });
 
             rowCount = tableData.length;
-            
             rebuildTable();
             
             console.log('✅ User data loaded and displayed');
-            
             showNotification(`Loaded ${result.data.length} existing records`, 'success');
             
         } else {
-            console.log('📭 No existing data found for user');
-            initializeTable();
+            // NEW USER - NO DATA FOUND
+            console.log('📭 No existing data found for user, creating 6 empty rows...');
+            
+            // Clear any existing data
+            tableData = [];
+            rowCount = 0;
+            
+            // Initialize with 6 empty rows for NEW users
+            for (let i = 0; i < 6; i++) {
+                addNewRow();
+            }
+            rebuildTable();
+            
+            showNotification('Welcome! Start entering your data', 'info');
         }
         
     } catch (error) {
         console.error('❌ Error loading user data:', error);
-        initializeTable();
+        showNotification('Error loading data. Starting fresh.', 'error');
+        
+        // Fallback: Create 6 empty rows
+        tableData = [];
+        rowCount = 0;
+        for (let i = 0; i < 6; i++) {
+            addNewRow();
+        }
+        rebuildTable();
     } finally {
-        window.isLoadingData = false; 
+        window.isLoadingData = false;
     }
 }
 
