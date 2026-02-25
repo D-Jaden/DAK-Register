@@ -34,14 +34,14 @@
                     <div class = "features" id = "toolbar">
                         <div class = "instructions">
                             <select class = "instr" id = "instr">
-                                <option>🚀 Instructions</option>
-                                <option>• Click On Any Cell To Start Editing</option>
-                                <option>• Use Tab To Move To Next Cell </option>
-                                <option>• Right Click To Insert Or Delete Row</option>
-                                <option>• Press Enter or Click Elsewhere To Save</option>
-                                <option>• Use hamburger menu (☰) to sort columns</option>
-                                <option>• Click "Add New Row" to expand your table </option>
-                                <option>• ⚠️ Double Check Before Saving </option>
+                                <option>Instructions</option>
+                                <option>Click On Any Cell To Start Editing</option>
+                                <option>Use Tab To Move To Next Cell </option>
+                                <option>Right Click To Insert Or Delete Row</option>
+                                <option>Press Enter or Click Elsewhere To Save</option>
+                                <option>Use hamburger ☰ menu to sort columns</option>
+                                <option>Click "Add New Row" to expand your table </option>
+                                <option>Double Check Before Saving </option>
                             </select>
                         </div>
                         <div class = "fontstyles">
@@ -67,19 +67,19 @@
                             </select>
                         </div>
                         <div class = "buttons">
-                            <button class="undo-btn" id="undo">↶
-                                <span class="undo-hidden-text"> ⓘ Undo</span>
+                            <button class="undo-btn" id="undo"><b>↶</b>
+                                <span class="undo-hidden-text">Undo</span>
                             </button>
-                            <button class="redo-btn" id="redo">↷
-                                <span class="redo-hidden-text"> ⓘ Redo</span>
+                            <button class="redo-btn" id="redo"><b>↷</b>
+                                <span class="redo-hidden-text"> Redo</span>
                             </button>
-                            <button class = "bold-btn" id = "boldBtn" ><b>𝐁</b>
+                            <button class = "bold-btn" id = "boldBtn" ><b>B</b>
                                 <span class = "bold-hidden-text">Bold</span>
                             </button>
-                            <button class = "italic-btn" id = "italicsBtn"><b>𝐼</b>
+                            <button class = "italic-btn" id = "italicsBtn"><b>I</b>
                                 <span class = "italic-hidden-text">Italic</span>
                             </button>
-                            <button class = "underline-btn" id = "underlineBtn"><b>U̲</b>
+                            <button class = "underline-btn" id = "underlineBtn"><b>U</b>
                                 <span class = "underline-hidden-text">Underline</span>
                             </button>
                         </div>
@@ -103,7 +103,7 @@
                             <div class="split-btn-container">
                                 <button class="entries-btn">No Of Entries</button>
                                 <button class="dropdown-toggle" aria-expanded="false">
-                                    <span class="caret">▼</span>
+                                    <span class="caret">⬇️</span>
                                 </button>
                                 <ul class="dropdown-menu">
                                     <li><a>6 Entries</a></li>
@@ -134,7 +134,7 @@
                               <div class="column-header">
                                 <span>Date</span>
                                 <div class="hamburger-menu">
-                                  <button class="hamburger-btn">☰</button>
+                                  <button class="hamburger-btn">☰  </button>
                                   <div class="sort-dropdown" id="sort-date">
                                     <div class="dropdown-section">
                                       <div class="dropdown-header">Sort</div>
@@ -159,7 +159,7 @@
                               <div class="column-header">
                                 <span>To Whom Sent</span>
                                 <div class="hamburger-menu">
-                                  <button class="hamburger-btn">☰</button>
+                                  <button class="hamburger-btn">☰  </button>
                                   <div class="sort-dropdown" id="sort-toWhom">
                                     <div class="dropdown-section">
                                       <div class="dropdown-header">Sort</div>
@@ -184,7 +184,7 @@
                               <div class="column-header">
                                 <span>Place</span>
                                 <div class="hamburger-menu">
-                                  <button class="hamburger-btn">☰</button>
+                                  <button class="hamburger-btn">☰  </button>
                                   <div class="sort-dropdown" id="sort-place">
                                     <div class="dropdown-section">
                                       <div class="dropdown-header">Sort</div>
@@ -209,7 +209,7 @@
                               <div class="column-header">
                                 <span>Subject</span>
                                 <div class="hamburger-menu">
-                                  <button class="hamburger-btn">☰</button>
+                                  <button class="hamburger-btn">☰  </button>
                                   <div class="sort-dropdown" id="sort-subject">
                                     <div class="dropdown-section">
                                       <div class="dropdown-header">Sort</div>
@@ -234,7 +234,7 @@
                               <div class="column-header">
                                 <span>Sent By</span>
                                 <div class="hamburger-menu">
-                                  <button class="hamburger-btn">☰</button>
+                                  <button class="hamburger-btn">☰  </button>
                                   <div class="sort-dropdown" id="sort-sentBy">
                                     <div class="dropdown-section">
                                       <div class="dropdown-header">Sort</div>
@@ -253,6 +253,82 @@
                                 </div>
                               </div>
                             </th>
+
+                            <!-- =========  6. FILE / LETTER NO  ========= -->
+                            <th class="letterNo">
+                              <div class="column-header">
+                                <span>File / Letter No</span>
+                                <div class="hamburger-menu">
+                                  <button class="hamburger-btn">☰  </button>
+                                  <div class="sort-dropdown" id="sort-letterNo">
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Sort</div>
+                                      <div class="sort-option" data-order="asc" onclick="sortColumn('letterNo','asc')">Sort Ascending</div>
+                                      <div class="sort-option" data-order="desc" onclick="sortColumn('letterNo','desc')">Sort Descending</div>
+                                    </div>
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Search</div>
+                                      <input type="text" class="column-search-input" placeholder="Search letter no..." data-column="letterNo">
+                                      <div class="search-actions">
+                                        <button class="search-btn" onclick="searchColumn('letterNo')">Filter</button>
+                                        <button class="search-btn clear" onclick="clearColumnSearch('letterNo')">Clear</button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </th>
+
+                            <!-- =========  7. DELIVERY METHOD  ========= -->
+                            <th class="deliveryMethod">
+                              <div class="column-header">
+                                <span>Delivery Method</span>
+                                <div class="hamburger-menu">
+                                  <button class="hamburger-btn">☰  </button>
+                                  <div class="sort-dropdown" id="sort-deliveryMethod">
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Sort</div>
+                                      <div class="sort-option" data-order="asc" onclick="sortColumn('deliveryMethod','asc')">Sort Ascending</div>
+                                      <div class="sort-option" data-order="desc" onclick="sortColumn('deliveryMethod','desc')">Sort Descending</div>
+                                    </div>
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Search</div>
+                                      <input type="text" class="column-search-input" placeholder="Search delivery method..." data-column="deliveryMethod">
+                                      <div class="search-actions">
+                                        <button class="search-btn" onclick="searchColumn('deliveryMethod')">Filter</button>
+                                        <button class="search-btn clear" onclick="clearColumnSearch('deliveryMethod')">Clear</button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </th>
+
+                            <!-- =========  8. LETTER LANGUAGE  ========= -->
+                            <th class="letterLanguage">
+                              <div class="column-header">
+                                <span>Letter Language</span>
+                                <div class="hamburger-menu">
+                                  <button class="hamburger-btn">☰  </button>
+                                  <div class="sort-dropdown" id="sort-letterLanguage">
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Sort</div>
+                                      <div class="sort-option" data-order="asc" onclick="sortColumn('letterLanguage','asc')">Sort Ascending</div>
+                                      <div class="sort-option" data-order="desc" onclick="sortColumn('letterLanguage','desc')">Sort Descending</div>
+                                    </div>
+                                    <div class="dropdown-section">
+                                      <div class="dropdown-header">Search</div>
+                                      <input type="text" class="column-search-input" placeholder="Search language..." data-column="letterLanguage">
+                                      <div class="search-actions">
+                                        <button class="search-btn" onclick="searchColumn('letterLanguage')">Filter</button>
+                                        <button class="search-btn clear" onclick="clearColumnSearch('letterLanguage')">Clear</button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </th>
+
                         </tr>
                     </thead>
 
@@ -267,7 +343,7 @@
                     <button class = "save-btn">Save</button>
                     <!--<button class = "load-btn" id = "loadBtn">Load</button>-->
                     <button class = "switch-btn" onclick="switchPage('acquired')">Switch
-                        <span class = "hidden-text"> ⓘ Switch To DAK Acquired</span>
+                        <span class = "hidden-text">Switch To DAK Acquired</span>
                     </button>
                 </div>
                 <button class = "logout-btn" id ="logoutBtn">Log Out</button>
