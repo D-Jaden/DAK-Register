@@ -34,7 +34,10 @@ function createRowHash(rowData) {
         subject: rowData.subject || '',
         subjectHindi: rowData.subjectHindi || '',
         sentBy: rowData.sentBy || '',
-        sentByHindi: rowData.sentByHindi || ''
+        sentByHindi: rowData.sentByHindi || '',
+        letterNo: rowData.letterNo || '',
+        deliveryMethod: rowData.deliveryMethod || '',
+        letterLanguage: rowData.letterLanguage || ''
     };
     return JSON.stringify(relevantData);
 }
@@ -86,8 +89,8 @@ document.addEventListener('click', function(event) {
 function switchPage(targetPage) {
     // SAVE current table data to sessionStorage before switching
     syncTableDataWithDOM(); // Make sure we have latest data
-    sessionStorage.setItem('preservedTableData', JSON.stringify(tableData));
-    sessionStorage.setItem('preservedRowCount', rowCount.toString());
+    sessionStorage.setItem('despatch_preservedTableData', JSON.stringify(tableData));
+    sessionStorage.setItem('despatch_preservedRowCount', rowCount.toString());
     
     localStorage.setItem('flipTo', targetPage);
     const flipContainer = document.getElementById('flipContainer');
@@ -373,37 +376,32 @@ function applyAllFilters() {
 function initializeTable() {
 
     if (window.tableInitialized) {
-        console.log('⏭️ Table already initialized, skipping...');
         return;
     }
-    const preservedData = sessionStorage.getItem('preservedTableData');
-    const preservedRowCount = sessionStorage.getItem('preservedRowCount');
+    const preservedData = sessionStorage.getItem('despatch_preservedTableData');
+    const preservedRowCount = sessionStorage.getItem('despatch_preservedRowCount');
     
     if (preservedData && preservedRowCount) {
-        console.log('🔄 Restoring data from previous page...');
         tableData = JSON.parse(preservedData);
         rowCount = parseInt(preservedRowCount);
         rebuildTable();
         
         // Clear the preserved data
-        sessionStorage.removeItem('preservedTableData');
-        sessionStorage.removeItem('preservedRowCount');
+        sessionStorage.removeItem('despatch_preservedTableData');
+        sessionStorage.removeItem('despatch_preservedRowCount');
         
         setupRowInsertion();
         attachAllEventListeners();
         window.tableInitialized = true;
         
-        console.log('✅ Data restored from page switch!');
         return; 
     }
 
     const userIsAuthenticated = isAuthenticated();
 
     if (userIsAuthenticated) {
-        console.log('🔄 Authenticated user - loading data...');
         loadUserData(); // This will handle BOTH cases: existing data OR new user
     } else {
-        console.log('📝 Guest user - initializing with 6 empty rows...');
         for (let i = 0; i < 6; i++) {
             addNewRow();
         }
@@ -420,9 +418,8 @@ function initializeTable() {
     const saveBtn = document.querySelector('.save-btn');
     if (saveBtn) {
         saveBtn.addEventListener('click', saveToDatabase);
-        console.log('✅ Save button listener attached');
     } else {
-        console.error('❌ Save button not found!');
+        console.error('Save button not found!');
     }
     //=================
     //LOAD DATA
@@ -431,10 +428,9 @@ function initializeTable() {
 
     if (loadBtn) {
         loadBtn.addEventListener('click', loadUserData);
-        console.log('✅ Load button listener attached');
     } 
     else {
-        console.error('❌ Load button not found!');
+        console.error(' Load button not found!');
     }*/
     
     //============================
@@ -454,7 +450,10 @@ function initializeTable() {
                 'whomSent': 'toWhom',
                 'place': 'place',
                 'subject': 'subject',
-                'sentBy': 'sentBy'
+                'sentBy': 'sentBy',
+                'letterNo': 'letterNo',
+                'deliveryMethod': 'deliveryMethod',
+                'letterLanguage': 'letterLanguage'
             };
 
             const field = columnMap[column] || column;
@@ -527,7 +526,6 @@ function initializeTable() {
             e.preventDefault();
             undo();
         });
-        console.log('✅ Undo button listener attached');
     }
 
     if (redoBtn) {
@@ -535,7 +533,6 @@ function initializeTable() {
             e.preventDefault();
             redo();
         });
-        console.log('✅ Redo button listener attached');
     }
 
     // Initialize button states
@@ -557,7 +554,6 @@ function attachAllEventListeners() {
     const saveBtn = document.querySelector('.save-btn');
     if (saveBtn) {
         saveBtn.addEventListener('click', saveToDatabase);
-        console.log('✅ Save button listener attached');
     } else {
         console.error('❌ Save button not found!');
     }
@@ -578,7 +574,10 @@ function attachAllEventListeners() {
                 'whomSent': 'toWhom',
                 'place': 'place',
                 'subject': 'subject',
-                'sentBy': 'sentBy'
+                'sentBy': 'sentBy',
+                'letterNo': 'letterNo',
+                'deliveryMethod': 'deliveryMethod',
+                'letterLanguage': 'letterLanguage'
             };
 
             const field = columnMap[column] || column;
@@ -651,7 +650,6 @@ function attachAllEventListeners() {
             e.preventDefault();
             undo();
         });
-        console.log('✅ Undo button listener attached');
     }
 
     if (redoBtn) {
@@ -659,7 +657,6 @@ function attachAllEventListeners() {
             e.preventDefault();
             redo();
         });
-        console.log('✅ Redo button listener attached');
     }
 
     updateUndoRedoButtons();
@@ -704,7 +701,6 @@ let redoStack = [];
 
 // Initialize the formatting system
 function initializeTextFormatting() {
-    console.log('Initializing text formatting...');
     
     
     makeTableCellsEditable();
@@ -1236,7 +1232,6 @@ document.addEventListener('DOMContentLoaded', () => {
             rebuildTable();
             splitBtnContainer.classList.remove('active');
             dropdownToggle.setAttribute('aria-expanded', 'false');
-            console.log(`Selected number of entries: ${selectedValue} entries`);
         });
     });
 });
@@ -1455,12 +1450,15 @@ function addNewRow() {
         subject: '',
         subjectHindi: '',
         sentBy: '',
-        sentByHindi: ''
+        sentByHindi: '',
+        letterNo: '',
+        deliveryMethod: '',
+        letterLanguage: ''
     };
     tableData.push(rowData);
     row.innerHTML = `
         <td class="row-number">${rowCount}</td>
-        <td><input type="text" class="cell" required data-row="${rowCount-1}" data-field="date" placeholder="Enter date..." style="height: 53px;"></td> <!-- Keep as input for date (no wrapping needed) -->
+        <td><input type="text" class="cell" required data-row="${rowCount-1}" data-field="date" placeholder="Enter date..." style="height: 53px;"></td>
         <td>
             <textarea class="cell english-cell" required data-row="${rowCount-1}" data-field="toWhom" placeholder="Enter recipient..." style="resize: vertical;"></textarea>
             <textarea class="cell hindi-cell" data-row="${rowCount-1}" data-field="toWhomHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
@@ -1474,8 +1472,25 @@ function addNewRow() {
             <textarea class="cell hindi-cell" data-row="${rowCount-1}" data-field="subjectHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <textarea class="cell english-cell" required data-row="${rowCount-1}" data-field="sentBy" placeholder="Mode of sending..." style="resize: vertical;"></textarea>
+            <textarea class="cell english-cell" required data-row="${rowCount-1}" data-field="sentBy" placeholder="Name of sender..." style="resize: vertical;"></textarea>
             <textarea class="cell hindi-cell" data-row="${rowCount-1}" data-field="sentByHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+        </td>
+        <td>
+            <input type="text" class="cell english-cell" required data-row="${rowCount-1}" data-field="letterNo" placeholder="e.g. NIC/2025/001" style="height: 53px;">
+        </td>
+        <td>
+            <div class="radio-cell" data-row="${rowCount-1}" data-field="deliveryMethod">
+                <label class="radio-label"><input type="radio" name="deliveryMethod_${rowCount-1}" value="Speed Post" onchange="saveRadioValue(this)"> Speed Post</label>
+                <label class="radio-label"><input type="radio" name="deliveryMethod_${rowCount-1}" value="Registered Post" onchange="saveRadioValue(this)"> Registered Post</label>
+                <label class="radio-label"><input type="radio" name="deliveryMethod_${rowCount-1}" value="Hand Delivery" onchange="saveRadioValue(this)"> Hand Delivery</label>
+            </div>
+        </td>
+        <td>
+            <div class="radio-cell" data-row="${rowCount-1}" data-field="letterLanguage">
+                <label class="radio-label"><input type="radio" name="letterLanguage_${rowCount-1}" value="Hindi" onchange="saveRadioValue(this)"> Hindi</label>
+                <label class="radio-label"><input type="radio" name="letterLanguage_${rowCount-1}" value="English" onchange="saveRadioValue(this)"> English</label>
+                <label class="radio-label"><input type="radio" name="letterLanguage_${rowCount-1}" value="Bilingual" onchange="saveRadioValue(this)"> Bilingual</label>
+            </div>
         </td>
     `;
 
@@ -1513,43 +1528,40 @@ function moveToNextCell(currentCell) {
 function syncTableDataWithDOM() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
-    
-    rows.forEach((row, index) => {
-        if (!tableData[index]) {
-            console.warn(`⚠️ No tableData for row ${index}`);
-            return;
-        }
-        
-        // Get ALL input elements (input, textarea, contentEditable)
-        const allInputs = row.querySelectorAll('input.cell, textarea.cell, [contenteditable="true"].cell');
-        
-        console.log(`Row ${index}: Found ${allInputs.length} input elements`);
-        
-        // Helper function to get value from any input type
+
+    rows.forEach((row) => {
+        // Use data-row from the first cell — DOM index is wrong on page 2+
+        // because rebuildTable sets data-row = startIdx+index, so DOM row 0
+        // on page 2 with 6 entries/page = tableData[6], not tableData[0].
+        const firstCell = row.querySelector('[data-row]');
+        if (!firstCell) return;
+        const dataIndex = parseInt(firstCell.getAttribute('data-row'));
+        if (isNaN(dataIndex) || !tableData[dataIndex]) return;
+
         const getCellValue = (cell) => {
             if (!cell) return '';
-            if (cell.tagName === 'INPUT') {
-                console.log(`  Input value: "${cell.value}"`);
-                return cell.value;
-            }
-            if (cell.tagName === 'TEXTAREA') {
-                console.log(`  Textarea value: "${cell.value}"`);
-                return cell.value;
-            }
-            if (cell.contentEditable === 'true') {
-                console.log(`  ContentEditable innerHTML: "${cell.innerHTML}"`);
-                return cell.innerHTML;
-            }
+            if (cell.tagName === 'INPUT') return cell.value;
+            if (cell.tagName === 'TEXTAREA') return cell.value;
+            if (cell.contentEditable === 'true') return cell.innerHTML;
             return '';
         };
-        
-        // Map inputs to fields based on data-field attribute
+
+        // Use data-field attributes — reliable on every page
+        const allInputs = row.querySelectorAll('input.cell, textarea.cell, [contenteditable="true"].cell');
         allInputs.forEach(input => {
             const field = input.getAttribute('data-field');
             if (field) {
-                const value = getCellValue(input);
-                tableData[index][field] = value;
-                console.log(`  ✅ Saved ${field}: "${value}"`);
+                tableData[dataIndex][field] = getCellValue(input);
+            }
+        });
+
+        // Radio buttons
+        const radioCells = row.querySelectorAll('.radio-cell');
+        radioCells.forEach(radioCell => {
+            const field = radioCell.getAttribute('data-field');
+            const checkedRadio = radioCell.querySelector('input[type="radio"]:checked');
+            if (field && checkedRadio) {
+                tableData[dataIndex][field] = checkedRadio.value;
             }
         });
     });
@@ -1575,7 +1587,10 @@ function getCellValueByColumn(row, column) {
         'toWhom': [1, 2],
         'place': [3, 4],
         'subject': [5, 6],
-        'sentBy': [7, 8]
+        'sentBy': [7, 8],
+        'letterNo': [9],
+        'deliveryMethod': [10],
+        'letterLanguage': [11]
     };
     
     const indices = columnMapping[column] || [];
@@ -1667,27 +1682,38 @@ function setupRowInsertion() {
 // ADD ROW LISTENERS
 
 function addRowInsertionListeners(row) {
+    if (row.querySelector('.insert-row-btn')) return;
+
     const insertBtn = document.createElement('div');
     insertBtn.className = 'insert-row-btn';
     insertBtn.innerHTML = '+ Insert Row';
     insertBtn.style.display = 'none';
-    
-    row.style.position = 'relative';
-    row.appendChild(insertBtn);
-    
+
+    // Append into last <td>, not <tr> — a <div> in <tr> is invalid HTML.
+    // The browser re-parses on every mouseenter/mouseleave toggle causing
+    // a full row reflow that makes radio cells collapse/expand.
+    const lastTd = row.querySelector('td:last-child');
+    if (lastTd) {
+        lastTd.style.position = 'relative';
+        lastTd.appendChild(insertBtn);
+    } else {
+        row.style.position = 'relative';
+        row.appendChild(insertBtn);
+    }
+
     row.addEventListener('mouseenter', function() {
         insertBtn.style.display = 'block';
     });
-    
+
     row.addEventListener('mouseleave', function() {
         insertBtn.style.display = 'none';
     });
-    
+
     insertBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         insertRowAfter(row);
     });
-    
+
     row.addEventListener('contextmenu', function(e) {
         e.preventDefault();
         showContextMenu(e, row);
@@ -1700,19 +1726,16 @@ function addRowInsertionListeners(row) {
 
 async function loadUserData() {
     if (window.isLoadingData) {
-        console.log('⏭️ Already loading data, skipping duplicate call...');
         return;
     }
 
     if (!isAuthenticated()) {
-        console.log('User not authenticated, skipping data load');
         return;
     }
 
     window.isLoadingData = true;
 
     try {
-        console.log('📥 Loading user data...');
         
         const response = await fetch('/api/despatch/load', {
             method: 'GET',
@@ -1736,7 +1759,6 @@ async function loadUserData() {
         const result = await response.json();
         
         if (result.success && result.data && result.data.length > 0) {
-            console.log(`📊 Loaded ${result.data.length} existing records`);
             
             // Store original data for comparison
             originalData.clear();
@@ -1759,6 +1781,9 @@ async function loadUserData() {
                     subjectHindi: row.subjectHindi || '',
                     sentBy: row.sentBy || '',
                     sentByHindi: row.sentByHindi || '',
+                    letterNo: row.letterNo || '',
+                    deliveryMethod: row.deliveryMethod || '',
+                    letterLanguage: row.letterLanguage || '',
                     isFromDatabase: true,
                     hasChanges: false
                 };
@@ -1767,12 +1792,10 @@ async function loadUserData() {
             rowCount = tableData.length;
             rebuildTable();
             
-            console.log('✅ User data loaded and displayed');
             showNotification(`Loaded ${result.data.length} existing records`, 'success');
             
         } else {
             // NEW USER - NO DATA FOUND
-            console.log('📭 No existing data found for user, creating 6 empty rows...');
             
             // Clear any existing data
             tableData = [];
@@ -1788,7 +1811,7 @@ async function loadUserData() {
         }
         
     } catch (error) {
-        console.error('❌ Error loading user data:', error);
+        console.error(' Error loading user data:', error);
         showNotification('Error loading data. Starting fresh.', 'error');
         
         // Fallback: Create 6 empty rows
@@ -1826,7 +1849,10 @@ function insertRowAfter(targetRow) {
         subject: '',
         subjectHindi: '',
         sentBy: '',
-        sentByHindi: ''
+        sentByHindi: '',
+        letterNo: '',
+        deliveryMethod: '',
+        letterLanguage: ''
     };
     tableData.splice(targetIndex + 1, 0, rowData);
     
@@ -1846,8 +1872,25 @@ function insertRowAfter(targetRow) {
             <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="subjectHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="sentBy" placeholder="Mode of sending..." style="resize: vertical;"></textarea>
+            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="sentBy" placeholder="Name of sender..." style="resize: vertical;"></textarea>
             <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="sentByHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+        </td>
+        <td>
+            <input type="text" class="cell english-cell" required data-row="${targetIndex + 1}" data-field="letterNo" placeholder="e.g. NIC/2025/001" style="height: 53px;">
+        </td>
+        <td>
+            <div class="radio-cell" data-row="${targetIndex + 1}" data-field="deliveryMethod">
+                <label class="radio-label"><input type="radio" name="deliveryMethod_${targetIndex + 1}" value="Speed Post" onchange="saveRadioValue(this)"> Speed Post</label>
+                <label class="radio-label"><input type="radio" name="deliveryMethod_${targetIndex + 1}" value="Registered Post" onchange="saveRadioValue(this)"> Registered Post</label>
+                <label class="radio-label"><input type="radio" name="deliveryMethod_${targetIndex + 1}" value="Hand Delivery" onchange="saveRadioValue(this)"> Hand Delivery</label>
+            </div>
+        </td>
+        <td>
+            <div class="radio-cell" data-row="${targetIndex + 1}" data-field="letterLanguage">
+                <label class="radio-label"><input type="radio" name="letterLanguage_${targetIndex + 1}" value="Hindi" onchange="saveRadioValue(this)"> Hindi</label>
+                <label class="radio-label"><input type="radio" name="letterLanguage_${targetIndex + 1}" value="English" onchange="saveRadioValue(this)"> English</label>
+                <label class="radio-label"><input type="radio" name="letterLanguage_${targetIndex + 1}" value="Bilingual" onchange="saveRadioValue(this)"> Bilingual</label>
+            </div>
         </td>
     `;
     
@@ -1951,7 +1994,10 @@ function insertRowBefore(targetRow) {
         subject: '',
         subjectHindi: '',
         sentBy: '',
-        sentByHindi: ''
+        sentByHindi: '',
+        letterNo: '',
+        deliveryMethod: '',
+        letterLanguage: ''
     };
     tableData.splice(targetIndex, 0, rowData);
     
@@ -1971,8 +2017,25 @@ function insertRowBefore(targetRow) {
             <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="subjectHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
         </td>
         <td>
-            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="sentBy" placeholder="Mode of sending..." style="resize: vertical;"></textarea>
+            <textarea class="cell english-cell" required data-row="${targetIndex + 1}" data-field="sentBy" placeholder="Name of sender..." style="resize: vertical;"></textarea>
             <textarea class="cell hindi-cell" data-row="${targetIndex + 1}" data-field="sentByHindi" placeholder="Hindi translation..." disabled style="resize: vertical;"></textarea>
+        </td>
+        <td>
+            <input type="text" class="cell english-cell" required data-row="${targetIndex + 1}" data-field="letterNo" placeholder="e.g. NIC/2025/001" style="height: 53px;">
+        </td>
+        <td>
+            <div class="radio-cell" data-row="${targetIndex + 1}" data-field="deliveryMethod">
+                <label class="radio-label"><input type="radio" name="deliveryMethod_${targetIndex + 1}" value="Speed Post" onchange="saveRadioValue(this)"> Speed Post</label>
+                <label class="radio-label"><input type="radio" name="deliveryMethod_${targetIndex + 1}" value="Registered Post" onchange="saveRadioValue(this)"> Registered Post</label>
+                <label class="radio-label"><input type="radio" name="deliveryMethod_${targetIndex + 1}" value="Hand Delivery" onchange="saveRadioValue(this)"> Hand Delivery</label>
+            </div>
+        </td>
+        <td>
+            <div class="radio-cell" data-row="${targetIndex + 1}" data-field="letterLanguage">
+                <label class="radio-label"><input type="radio" name="letterLanguage_${targetIndex + 1}" value="Hindi" onchange="saveRadioValue(this)"> Hindi</label>
+                <label class="radio-label"><input type="radio" name="letterLanguage_${targetIndex + 1}" value="English" onchange="saveRadioValue(this)"> English</label>
+                <label class="radio-label"><input type="radio" name="letterLanguage_${targetIndex + 1}" value="Bilingual" onchange="saveRadioValue(this)"> Bilingual</label>
+            </div>
         </td>
     `;
     
@@ -2004,6 +2067,31 @@ function deleteRow(row, index) {
 }
 
 //ADD CELL EVENT LISTENERS
+
+// Save radio button value to tableData
+function saveRadioValue(radioInput) {
+    const radioCell = radioInput.closest('.radio-cell');
+    if (!radioCell) return;
+    const row = parseInt(radioCell.getAttribute('data-row'));
+    const field = radioCell.getAttribute('data-field');
+    const value = radioInput.value;
+    
+    if (tableData[row]) {
+        tableData[row][field] = value;
+        
+        if (tableData[row].isFromDatabase) {
+            const currentHash = createRowHash(tableData[row]);
+            const originalHash = originalData.get(row);
+            if (currentHash !== originalHash) {
+                changedRows.add(row);
+                tableData[row].hasChanges = true;
+            }
+        } else {
+            newRows.add(row);
+        }
+        updateRowVisualStatus(row);
+    }
+}
 
 function addCellEventListeners(cell) {
     if (cell.getAttribute('data-field') === 'date') {
@@ -2048,7 +2136,7 @@ function addCellEventListeners(cell) {
 
 // Validate row data - checks if all required fields are filled
 function validateRowData(rowData, rowIndex) {
-    const requiredFields = ['date', 'toWhom', 'place', 'subject', 'sentBy'];
+    const requiredFields = ['date', 'toWhom', 'place', 'subject', 'sentBy', 'letterNo', 'deliveryMethod', 'letterLanguage'];
     const missingFields = [];
     
     for (const field of requiredFields) {
@@ -2119,7 +2207,24 @@ async function saveToDatabase() {
     // Get only changed and new rows
     const changedRowsData = [];
     const newRowsData = [];
-    
+
+    tableData.forEach((rowData, rowIndex) => {
+        if (rowData.isFromDatabase) {
+            const currentHash = createRowHash(rowData);
+            const originalHash = originalData.get(rowIndex);
+            if (originalHash !== undefined && currentHash !== originalHash) {
+                changedRows.add(rowIndex);
+                rowData.hasChanges = true;
+            }
+        } else {
+            const hasAnyData = Object.entries(rowData).some(([k, v]) =>
+                k !== 'isFromDatabase' && k !== 'hasChanges' && k !== 'id' &&
+                v && v.toString().trim() !== ''
+            );
+            if (hasAnyData) newRows.add(rowIndex);
+        }
+    });
+
     changedRows.forEach(rowIndex => {
         if (tableData[rowIndex]) {
             const rowData = tableData[rowIndex];
@@ -2154,19 +2259,18 @@ async function saveToDatabase() {
     }
 
     const confirmMessage = `Save ${totalChanges} changes?\n\n` +
-        `• ${newRowsData.length} new rows\n` +
-        `• ${changedRowsData.length} modified rows`;
+        ` ${newRowsData.length} new rows\n` +
+        ` ${changedRowsData.length} modified rows`;
         
     if (!confirm(confirmMessage)) {
         return;
     }
 
-    console.log(`🔄 Saving ${totalChanges} changed rows...`);
     
     try {
         const saveBtn = document.querySelector('.save-btn');
         const originalText = saveBtn.textContent;
-        saveBtn.textContent = '⏳ Saving Changes...';
+        saveBtn.textContent = ' Saving Changes...';
         saveBtn.disabled = true;
 
         const response = await fetch('/api/despatch/save-changes', {
@@ -2220,7 +2324,7 @@ async function saveToDatabase() {
                 row.classList.remove('row-changed', 'row-new');
             });
             
-            saveBtn.textContent = '✅ Changes Saved!';
+            saveBtn.textContent = ' Changes Saved!';
             setTimeout(() => {
                 saveBtn.textContent = originalText;
             }, 3000);
@@ -2232,11 +2336,11 @@ async function saveToDatabase() {
         }
         
     } catch (error) {
-        console.error('❌ Save error:', error);
-        alert('❌ Error saving changes: ' + error.message);
+        console.error(' Save error:', error);
+        alert(' Error saving changes: ' + error.message);
     } finally {
         const saveBtn = document.querySelector('.save-btn');
-        if (!saveBtn.textContent.includes('✅')) {
+        if (!saveBtn.textContent.includes('')) {
             saveBtn.textContent = 'Save Changes';
         }
         saveBtn.disabled = false;
@@ -2247,18 +2351,15 @@ async function saveToDatabase() {
 //============================================
 //TRANSLATION
 //============================================
-
-async function translateText(text) {
-    console.log('🔄 Translation requested for:', text);
+//OLD API VIA HELSINKI MODEL  WORKS BUT SLOW EFFICIENCY
+/*async function translateText(text) {
     
     // Check cache first
     if (translationCache.has(text)) {
-        console.log('✅ Using cached translation');
         return translationCache.get(text);
     }
     
     try {
-        console.log('📡 Calling translation API...');
         const response = await fetch("https://d-jaden02-en-hi-helsinki-model.hf.space/translate", {
             method: 'POST',
             headers: {
@@ -2270,26 +2371,22 @@ async function translateText(text) {
             })
         });
         
-        console.log('📥 Response status:', response.status);
         
         if (!response.ok) {
             throw new Error(`API request failed with status ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('📦 Response data:', data);
         
         if (data && data.translated_text) {
             const translated = data.translated_text;
             translationCache.set(text, translated);
-            console.log('✅ Translation successful:', translated);
             return translated;
         } else {
             throw new Error(data.error || 'Invalid response from translation API');
         }
     } catch (error) {
-        console.error('❌ Translation error:', error);
-        console.warn('Translation API unavailable, using original text');
+        console.error(' Translation error:', error);
         return text;
     }
 }
@@ -2336,7 +2433,205 @@ async function translateTextBatch(texts) {
         texts.forEach(text => fallback[text] = text);
         return fallback;
     }
+}*/
+
+//============================================
+//TRANSLATION
+//============================================
+/*
+let gradioClient = null;
+
+async function getClient() {
+    if (!gradioClient) {
+        const { Client } = await import("https://esm.sh/@gradio/client");
+        gradioClient = await Client.connect("D-Jaden02/Krutrim_English_Hi_Translation");
+    }
+    return gradioClient;
 }
+
+async function translateText(text) {
+    if (!text?.trim()) return text;
+    if (translationCache.has(text)) return translationCache.get(text);
+
+    try {
+        const client = await getClient();
+        const result = await client.predict("/translate", { text: text });
+        const translated = result.data[0];
+        translationCache.set(text, translated);
+        return translated;
+    } catch (error) {
+        console.error('Translation error:', error);
+        return text;
+    }
+}
+
+async function translateTextBatch(texts) {
+    const client = await getClient(); // connect once
+    const results = await Promise.all(
+        texts.map(async (text) => {
+            if (translationCache.has(text)) return translationCache.get(text);
+            try {
+                const result = await client.predict("/translate", { text });
+                const translated = result.data[0];
+                translationCache.set(text, translated);
+                return translated;
+            } catch {
+                return text;
+            }
+        })
+    );
+    const map = {};
+    texts.forEach((t, i) => map[t] = results[i]);
+    return map;
+}
+
+async function translateText(text) {
+
+    if (translationCache.has(text)) {
+        return translationCache.get(text);
+    }
+
+    try {
+        const { Client } = await import("https://esm.sh/@gradio/client");
+        const client = await Client.connect("D-Jaden02/Krutrim_English_Hi_Translation");
+        const result = await client.predict("/translate", { text: text });
+
+        const translated = result.data[0];
+        translationCache.set(text, translated);
+        return translated;
+
+    } catch (error) {
+        console.error('Translation error:', error);
+        return text; // fallback to original
+    }
+}
+
+async function translateTextBatch(texts) {
+    const results = await Promise.all(texts.map(t => translateText(t)));
+    const map = {};
+    texts.forEach((t, i) => map[t] = results[i]);
+    return map;
+}
+
+//FASTER TRANSLATION ALT
+
+async function translateTextBatch(texts) {
+    try {
+        const response = await fetch("https://d-jaden02-krutrim-english-hi-translation.hf.space/batch_translate", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                texts: texts,
+                max_length: 512
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Batch API request failed with status ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data && data.results) {
+            const translations = {};
+            data.results.forEach((result, index) => {
+                if (!result.error && result.translated_text) {
+                    translations[texts[index]] = result.translated_text;
+                    translationCache.set(texts[index], result.translated_text);
+                } else {
+                    translations[texts[index]] = texts[index]; // Fallback to original
+                }
+            });
+            return translations;
+        } else {
+            throw new Error('Invalid batch response from translation API');
+        }
+    } catch (error) {
+        console.error('Batch translation error:', error);
+        // Return original texts as fallback
+        const fallback = {};
+        texts.forEach(text => fallback[text] = text);
+        return fallback;
+    }
+}*/
+
+let gradioClient = null;
+let debounceTimer = null;
+
+async function getClient() {
+    if (!gradioClient) {
+        const { Client } = await import("https://esm.sh/@gradio/client");
+        gradioClient = await Client.connect("D-Jaden02/Krutrim_English_Hi_Translation");
+    }
+    return gradioClient;
+}
+
+async function translateText(text) {
+    if (!text?.trim()) return text;
+    if (translationCache.has(text)) return translationCache.get(text);
+    try {
+        const client = await getClient();
+        const result = await client.predict("/translate", { text });
+        const translated = result.data[0];
+        translationCache.set(text, translated);
+        return translated;
+    } catch (error) {
+        console.error('Translation error:', error);
+        return text;
+    }
+}
+
+async function translateTextBatch(texts) {
+    const client = await getClient();
+    const results = await Promise.all(
+        texts.map(async (text) => {
+            if (translationCache.has(text)) return translationCache.get(text);
+            try {
+                const result = await client.predict("/translate", { text });
+                const translated = result.data[0];
+                translationCache.set(text, translated);
+                return translated;
+            } catch { return text; }
+        })
+    );
+    const map = {};
+    texts.forEach((t, i) => map[t] = results[i]);
+    return map;
+}
+
+function triggerTranslationEarly(text) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+        if (text?.trim() && !translationCache.has(text)) {
+            console.log('⏳ Pre-translating:', text);
+            await translateText(text);
+            console.log('✓ Pre-translation cached:', text);
+        }
+    }, 500); // starts translating 500ms after user stops typing
+}
+
+// Attach debounce to all English input fields on the page
+function attachTranslationDebounce() {
+    document.querySelectorAll('textarea, input[type="text"]').forEach(el => {
+        el.addEventListener('input', (e) => triggerTranslationEarly(e.target.value));
+    });
+}
+
+// Warm up on page load
+(async () => {
+    try {
+        const client = await getClient();
+        await client.predict("/translate", { text: "hello" });
+        console.log("✓ Translation API ready");
+        attachTranslationDebounce(); // attach after API is ready
+    } catch (e) {
+        console.warn("Warm-up failed:", e);
+    }
+})();
+
+
 
 //SAVE DATA AND HANDLE TRANSLATION
 
@@ -2357,7 +2652,6 @@ async function saveData(cell) {
             if (currentHash !== originalHash) {
                 changedRows.add(row);
                 tableData[row].hasChanges = true;
-                console.log(`📝 Row ${row + 1} marked as changed`);
             } else {
                 changedRows.delete(row);
                 tableData[row].hasChanges = false;
@@ -2372,16 +2666,12 @@ async function saveData(cell) {
             // CHANGED: Look for textarea instead of input
             const hindiInput = document.querySelector(`textarea[data-row="${row}"][data-field="${hindiField}"]`);
             
-            console.log('🔍 Looking for Hindi field:', hindiField);
-            console.log('🔍 Found element:', hindiInput);
             
             if (hindiInput) {
                 // Strip HTML tags for translation
                 const textToTranslate = value.replace(/<[^>]*>/g, '');
-                console.log('🔄 Translating:', textToTranslate);
                 
                 const translatedText = await translateText(textToTranslate);
-                console.log('✅ Translation result:', translatedText);
                 
                 hindiInput.value = translatedText;
                 hindiInput.disabled = false;
@@ -2397,7 +2687,6 @@ async function saveData(cell) {
                     }
                 }
             } else {
-                console.warn('⚠️ Hindi textarea not found for field:', hindiField);
             }
         }
         
@@ -2454,101 +2743,96 @@ function exportToPDF() {
 
     const original = document.getElementById('excelTable');
     if (!original) {
-        console.error('Table element not found');
         showNotification('Error: Table not found', 'error');
         return;
     }
 
-    // Clone the entire table
+    // ── 1. Clone and strip all live-DOM positioning ──────────────────
     const clone = original.cloneNode(true);
+    // BLANK-PAGE FIX: table has position:relative;bottom:7rem on screen.
+    // Resetting here ensures html2pdf captures from (0,0) with no top gap.
+    clone.style.cssText = [
+        'position:static',
+        'bottom:auto',
+        'left:auto',
+        'margin:0',
+        'width:100%',
+        'border-radius:0',
+        'box-shadow:none'
+    ].join(' !important;') + ' !important;';
 
-    /* 1. Remove UI elements from headers */
+    // ── 2. Strip UI chrome ───────────────────────────────────────────
     clone.querySelectorAll('.hamburger-menu, .sort-dropdown, .insert-row-btn').forEach(el => el.remove());
-    
-    /* 2. Clean up row styling */
     clone.querySelectorAll('.row-changed, .row-new').forEach(r => {
         r.classList.remove('row-changed', 'row-new');
         r.style.borderLeft = 'none';
     });
 
-    /* 3. Clean up header cells - keep only the text */
+    // ── 3. Clean header text ─────────────────────────────────────────
     clone.querySelectorAll('thead th').forEach(th => {
-        const columnHeader = th.querySelector('.column-header');
-        if (columnHeader) {
-            const span = columnHeader.querySelector('span');
-            if (span) {
-                th.textContent = span.textContent;
-            }
-        }
+        const span = th.querySelector('.column-header span');
+        if (span) th.textContent = span.textContent;
     });
 
-    /* 4. Process all rows in tbody */
+    // ── 4. Convert cell inputs / radios to plain text ────────────────
     clone.querySelectorAll('tbody tr').forEach(row => {
-        const cells = row.querySelectorAll('td');
-        
-        cells.forEach((cell, index) => {
+        row.querySelectorAll('td').forEach((cell, index) => {
+            // Serial number column
             if (index === 0) {
-                const rowNum = cell.querySelector('.row-number');
-                if (rowNum) {
-                    cell.textContent = rowNum.textContent;
-                }
+                const rn = cell.querySelector('.row-number');
+                if (rn) cell.textContent = rn.textContent;
                 return;
             }
-            
+
+            // Radio cells — convert to plain text (delivery method, letter language)
+            const radioCell = cell.querySelector('.radio-cell');
+            if (radioCell) {
+                const checked = radioCell.querySelector('input[type="radio"]:checked');
+                cell.innerHTML = '';
+                const span = document.createElement('span');
+                span.textContent = checked ? checked.value : '—';
+                span.style.cssText = 'font-size:11px; font-weight:600; color:#1a5276;';
+                cell.appendChild(span);
+                return;
+            }
+
             const inputs = cell.querySelectorAll('input.cell');
-            const contentEditables = cell.querySelectorAll('[contenteditable="true"].cell');
-            
-            if (contentEditables.length > 0) {
-                if (contentEditables.length === 1) {
-                    const div = contentEditables[0];
-                    const container = document.createElement('div');
-                    container.innerHTML = div.innerHTML;
-                    cell.innerHTML = '';
-                    cell.appendChild(container);
-                } else if (contentEditables.length === 2) {
-                    const english = contentEditables[0];
-                    const hindi = contentEditables[1];
-                    
-                    const container = document.createElement('div');
-                    if (english && english.innerHTML.trim()) {
-                        const engDiv = document.createElement('div');
-                        engDiv.innerHTML = english.innerHTML;
-                        engDiv.style.marginBottom = '2px';
-                        container.appendChild(engDiv);
-                    }
-                    if (hindi && hindi.innerHTML.trim()) {
-                        const hinDiv = document.createElement('div');
-                        hinDiv.innerHTML = hindi.innerHTML;
-                        hinDiv.style.cssText = 'font-family: "Noto Sans Devanagari", sans-serif; font-size: 1.1em; color: #555;';
-                        container.appendChild(hinDiv);
-                    }
-                    cell.innerHTML = '';
-                    cell.appendChild(container);
-                }
+            const ces = cell.querySelectorAll('[contenteditable="true"].cell');
+
+            if (ces.length > 0) {
+                const container = document.createElement('div');
+                ces.forEach((ce, i) => {
+                    if (!ce.innerHTML.trim()) return;
+                    const d = document.createElement('div');
+                    d.innerHTML = ce.innerHTML;
+                    if (i === 1) d.style.cssText = 'font-family:"Noto Sans Devanagari",sans-serif;font-size:0.95em;color:#555;margin-top:2px;';
+                    else d.style.marginBottom = '2px';
+                    container.appendChild(d);
+                });
+                cell.innerHTML = '';
+                cell.appendChild(container);
                 return;
             }
-            
-            if (inputs.length === 0) return;
-            
+
+            if (!inputs.length) return;
+
             if (inputs.length === 1) {
-                const input = inputs[0];
-                cell.textContent = input.value || '';
-            } else if (inputs.length === 2) {
-                const englishInput = cell.querySelector('.english-cell');
-                const hindiInput = cell.querySelector('.hindi-cell');
-                
+                cell.textContent = inputs[0].value || '';
+            } else {
+                const eng = cell.querySelector('.english-cell');
+                const hin = cell.querySelector('.hindi-cell');
                 const container = document.createElement('div');
-                if (englishInput && englishInput.value.trim()) {
-                    const engDiv = document.createElement('div');
-                    engDiv.textContent = englishInput.value.trim();
-                    engDiv.style.marginBottom = '2px';
-                    container.appendChild(engDiv);
+                if (eng && eng.value.trim()) {
+                    const d = document.createElement('div');
+                    d.textContent = eng.value.trim();
+                    d.style.marginBottom = '2px';
+                    container.appendChild(d);
                 }
-                if (hindiInput && hindiInput.value.trim()) {
-                    const hinDiv = document.createElement('div');
-                    hinDiv.textContent = hindiInput.value.trim();
-                    hinDiv.style.cssText = 'font-family: "Noto Sans Devanagari", sans-serif; font-size: 1.1em; color: #555;';
-                    container.appendChild(hinDiv);
+                if (hin && hin.value.trim()) {
+                    const d = document.createElement('div');
+                    d.textContent = hin.value.trim();
+                    d.style.cssText = 'font-family:"Noto Sans Devanagari",sans-serif;font-size:0.95em;color:#555;';
+                    container.appendChild(d);
                 }
                 cell.innerHTML = '';
                 cell.appendChild(container);
@@ -2556,119 +2840,96 @@ function exportToPDF() {
         });
     });
 
-    /* 5. Add comprehensive styling */
+    // ── 5. Inject PDF-only styles ────────────────────────────────────
     const style = document.createElement('style');
     style.textContent = `
-        @page {
-            size: A3 landscape;
-            margin: 2mm; /* Reduced margin */
-        }
-    
-        html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100%;
-            height: 100%;
-            background: #fff;
-        }
-    
-        .pdf-wrapper {
-            width: 100%;
-            margin-left: -5mm; /* Shift left by 5mm */
-            padding: 0;
-            text-align: left;
-        }
-    
+        * { box-sizing: border-box !important; }
+
         table {
-            width: 100%;
-            border-collapse: collapse;
-            font-family: Arial, "Segoe UI", sans-serif;
-            font-size: 12px; /* Increased font size */
-            table-layout: fixed;
-            margin-left: 0 !important;
+            width: 100% !important;
+            border-collapse: collapse !important;
+            font-family: Arial, "Segoe UI", sans-serif !important;
+            font-size: 11px !important;
+            table-layout: fixed !important;
+            position: static !important;
+            bottom: auto !important;
+            left: auto !important;
+            margin: 0 !important;
         }
-    
-        thead {
-            display: table-header-group;
-            break-inside: avoid;
-        }
-    
-        tbody {
-            display: table-row-group;
-        }
-    
-        tr {
-            page-break-inside: avoid;
-            break-inside: avoid;
-        }
-    
+
+        thead { display: table-header-group !important; }
+        tbody { display: table-row-group !important; }
+        tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+
         th {
             background-color: #34495e !important;
             color: white !important;
-            padding: 5px 3px !important;
+            padding: 8px 5px !important;
             text-align: center !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
             border: 1px solid #2c3e50 !important;
-            font-size: 14px !important; /* Increased header font size */
+            font-size: 11px !important;
             word-wrap: break-word !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-    
+
         td {
             border: 1px solid #ccc !important;
-            padding: 5px 3px !important;
+            padding: 7px 5px !important;
             vertical-align: middle !important;
             text-align: center !important;
-            font-size: 12px !important; /* Increased cell font size */
-            line-height: 1.25 !important;
+            font-size: 11px !important;
+            line-height: 1.4 !important;
             word-wrap: break-word !important;
         }
-    
-        tbody tr:nth-child(even) {
-            background-color: #f9f9f9 !important;
+
+        tbody tr:nth-child(even) td {
+            background-color: #f5f5f5 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-    
-        tbody tr:nth-child(odd) {
-            background-color: white !important;
-        }
-    
+
         td:first-child {
             background-color: #ecf0f1 !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-    
-        /* Adjusted column width proportions for full A3 landscape (~404mm) */
-        th:nth-child(1), td:nth-child(1) { width: 5% !important; }
-        th:nth-child(2), td:nth-child(2) { width: 10% !important; }
-        th:nth-child(3), td:nth-child(3) { width: 20% !important; }
-        th:nth-child(4), td:nth-child(4) { width: 15% !important; }
-        th:nth-child(5), td:nth-child(5) { width: 25% !important; }
-        th:nth-child(6), td:nth-child(6) { width: 25% !important; }
+
+        /* 9 columns — A3 landscape ~420mm usable width */
+        th:nth-child(1), td:nth-child(1) { width: 4%  !important; }
+        th:nth-child(2), td:nth-child(2) { width: 8%  !important; }
+        th:nth-child(3), td:nth-child(3) { width: 14% !important; }
+        th:nth-child(4), td:nth-child(4) { width: 9%  !important; }
+        th:nth-child(5), td:nth-child(5) { width: 18% !important; }
+        th:nth-child(6), td:nth-child(6) { width: 13% !important; }
+        th:nth-child(7), td:nth-child(7) { width: 11% !important; }
+        th:nth-child(8), td:nth-child(8) { width: 12% !important; }
+        th:nth-child(9), td:nth-child(9) { width: 11% !important; }
     `;
-    
     clone.appendChild(style);
-    
-    /* 6. Wrap table to control alignment */
-    const wrapper = document.createElement('div');
-    wrapper.classList.add('pdf-wrapper');
-    wrapper.appendChild(clone);
-    
-    /* 7. PDF generation options */
+
+    // ── 6. Mount in a clean off-screen container at top:0 ───────────
+    // This is the key blank-page fix: html2pdf.from() uses the element's
+    // getBoundingClientRect, so mounting at fixed top:0 left:0 means
+    // the capture starts at the very top of the PDF page.
+    const stage = document.createElement('div');
+    stage.style.cssText = 'position:fixed;top:0;left:0;width:297mm;z-index:-99999;background:white;overflow:visible;pointer-events:none;';
+    stage.appendChild(clone);
+    document.body.appendChild(stage);
+
+    // ── 7. Generate ──────────────────────────────────────────────────
     const opt = {
-        margin: [2, 1, 2, 2], // Reduced margins
+        margin: [5, 5, 5, 5],
         filename: `DAK_Despatch_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.99 },
+        image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
-            scale: 1.8, // Reduced scale to fit content on one page
+            scale: 2,
             useCORS: true,
             logging: false,
-            letterRendering: true,
             backgroundColor: '#ffffff',
+            scrollX: 0,
             scrollY: 0
         },
         jsPDF: {
@@ -2682,18 +2943,22 @@ function exportToPDF() {
             avoid: 'tr'
         }
     };
-    
-    /* 8. Generate PDF */
+
     html2pdf()
         .set(opt)
-        .from(wrapper)
+        .from(clone)
         .save()
-        .then(() => showNotification('PDF exported successfully!', 'success'))
-        .catch(error => {
-            console.error('PDF generation error:', error);
-            showNotification('Error generating PDF: ' + error.message, 'error');
+        .then(() => {
+            document.body.removeChild(stage);
+            showNotification('PDF exported successfully!', 'success');
+        })
+        .catch(err => {
+            document.body.removeChild(stage);
+            console.error('PDF error:', err);
+            showNotification('Error generating PDF: ' + err.message, 'error');
         });
 }
+
 
 //=====================================
 // REBUILD DATA FOR NO OF ENTRIES
@@ -2715,7 +2980,10 @@ function rebuildTable() {
             subject: '',
             subjectHindi: '',
             sentBy: '',
-            sentByHindi: ''
+            sentByHindi: '',
+            letterNo: '',
+            deliveryMethod: '',
+            letterLanguage: ''
         };
         tableData.push(rowData);
     }
@@ -2755,7 +3023,7 @@ function rebuildTable() {
         
         row.innerHTML = `
             <td class="row-number">${serialNumber}</td>
-            <td>${createCellContent('date', rowData.date, true, true)}</td> <!-- Date: input or contenteditable -->
+            <td>${createCellContent('date', rowData.date, true, true)}</td>
             <td>
                 ${createCellContent('toWhom', rowData.toWhom, true, false)}
                 ${createCellContent('toWhomHindi', rowData.toWhomHindi, false, false)}
@@ -2771,6 +3039,23 @@ function rebuildTable() {
             <td>
                 ${createCellContent('sentBy', rowData.sentBy, true, false)}
                 ${createCellContent('sentByHindi', rowData.sentByHindi, false, false)}
+            </td>
+            <td>
+                <input type="text" class="cell english-cell" required data-row="${startIdx + index}" data-field="letterNo" placeholder="e.g. NIC/2025/001" value="${rowData.letterNo || ''}" style="height: 53px;">
+            </td>
+            <td>
+                <div class="radio-cell" data-row="${startIdx + index}" data-field="deliveryMethod">
+                    <label class="radio-label"><input type="radio" name="deliveryMethod_${startIdx + index}" value="Speed Post" ${rowData.deliveryMethod === 'Speed Post' ? 'checked' : ''} onchange="saveRadioValue(this)"> Speed Post</label>
+                    <label class="radio-label"><input type="radio" name="deliveryMethod_${startIdx + index}" value="Registered Post" ${rowData.deliveryMethod === 'Registered Post' ? 'checked' : ''} onchange="saveRadioValue(this)"> Registered Post</label>
+                    <label class="radio-label"><input type="radio" name="deliveryMethod_${startIdx + index}" value="Hand Delivery" ${rowData.deliveryMethod === 'Hand Delivery' ? 'checked' : ''} onchange="saveRadioValue(this)"> Hand Delivery</label>
+                </div>
+            </td>
+            <td>
+                <div class="radio-cell" data-row="${startIdx + index}" data-field="letterLanguage">
+                    <label class="radio-label"><input type="radio" name="letterLanguage_${startIdx + index}" value="Hindi" ${rowData.letterLanguage === 'Hindi' ? 'checked' : ''} onchange="saveRadioValue(this)"> Hindi</label>
+                    <label class="radio-label"><input type="radio" name="letterLanguage_${startIdx + index}" value="English" ${rowData.letterLanguage === 'English' ? 'checked' : ''} onchange="saveRadioValue(this)"> English</label>
+                    <label class="radio-label"><input type="radio" name="letterLanguage_${startIdx + index}" value="Bilingual" ${rowData.letterLanguage === 'Bilingual' ? 'checked' : ''} onchange="saveRadioValue(this)"> Bilingual</label>
+                </div>
             </td>
         `;
         tbody.appendChild(row);
@@ -2796,7 +3081,7 @@ function rebuildTable() {
 //============================================
 
 function hasRequiredFields(rowData) {
-    const requiredFields = ['date', 'toWhom', 'place', 'subject', 'sentBy'];
+    const requiredFields = ['date', 'toWhom', 'place', 'subject', 'sentBy', 'letterNo', 'deliveryMethod', 'letterLanguage'];
     return requiredFields.every(field => 
         rowData[field] && rowData[field].toString().trim() !== ''
     );
