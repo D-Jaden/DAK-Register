@@ -74,7 +74,6 @@ router.post('/save', authenticateJWT, async (req, res) => {
             });
         }
         
-        console.log(`📝 User ${userId} attempting to save ${data.length} rows`);
         
         await client.query('BEGIN');
         
@@ -92,8 +91,11 @@ router.post('/save', authenticateJWT, async (req, res) => {
                     hi_subject, 
                     eng_sent_by, 
                     hi_sent_by,
+                    letter_no,
+                    delivery_method,
+                    language,
                     user_id
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             `;
             const pgDate = formatDateForPostgres(row.date);
             const values = [
@@ -107,6 +109,9 @@ router.post('/save', authenticateJWT, async (req, res) => {
                 row.subjectHindi || null,
                 row.sentBy || null,
                 row.sentByHindi || null,
+                row.letterNo || null,
+                row.deliveryMethod || null,
+                row.letterLanguage || null,
                 userId
             ];
             
@@ -115,7 +120,6 @@ router.post('/save', authenticateJWT, async (req, res) => {
         }
         
         await client.query('COMMIT');
-        console.log(`✅ User ${userId} successfully saved ${savedCount} rows`);
         
         res.json({
             success: true,
@@ -125,7 +129,7 @@ router.post('/save', authenticateJWT, async (req, res) => {
         
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('❌ Database save error:', error);
+        console.error(' Database save error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -143,7 +147,6 @@ router.post('/save', authenticateJWT, async (req, res) => {
 router.get('/load', authenticateJWT, async (req, res) => {
     try {
         const userId = req.user.user_id;
-        console.log(`📥 Loading data for user ${userId}`);
         
         const result = await pool.query(
             `SELECT 
@@ -158,6 +161,9 @@ router.get('/load', authenticateJWT, async (req, res) => {
                 hi_subject, 
                 eng_sent_by, 
                 hi_sent_by,
+                letter_no,
+                delivery_method,
+                language,
                 created_at,
                 updated_at
             FROM despatch 
@@ -166,7 +172,6 @@ router.get('/load', authenticateJWT, async (req, res) => {
             [userId]
         );
         
-        console.log(`📊 Found ${result.rows.length} records for user ${userId}`);
         
         const transformedData = result.rows.map(row => ({
             id: row.id,
@@ -180,6 +185,9 @@ router.get('/load', authenticateJWT, async (req, res) => {
             subjectHindi: row.hi_subject || '',
             sentBy: row.eng_sent_by || '',
             sentByHindi: row.hi_sent_by || '',
+            letterNo: row.letter_no || '',
+            deliveryMethod: row.delivery_method || '',
+            letterLanguage: row.language || '',
             isFromDatabase: true,
             hasChanges: false
         }));
@@ -191,7 +199,7 @@ router.get('/load', authenticateJWT, async (req, res) => {
         });
         
     } catch (error) {
-        console.error('❌ Database load error:', error);
+        console.error(' Database load error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -208,10 +216,6 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
         const { changedRows, newRows } = req.body;
         const userId = req.user.user_id;
         
-        console.log(`🔄 User ${userId} saving optimized changes:`, {
-            changedRows: changedRows.length,
-            newRows: newRows.length
-        });
 
         await client.query('BEGIN');
         
@@ -233,8 +237,11 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
                         hi_subject = $7,
                         eng_sent_by = $8,
                         hi_sent_by = $9,
+                        letter_no = $10,
+                        delivery_method = $11,
+                        language = $12,
                         updated_at = CURRENT_TIMESTAMP
-                    WHERE id = $10 AND user_id = $11
+                    WHERE id = $13 AND user_id = $14
                 `;
                 
                 const pgDate = formatDateForPostgres(row.date);
@@ -248,6 +255,9 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
                     row.subjectHindi || null,
                     row.sentBy || null,
                     row.sentByHindi || null,
+                    row.letterNo || null,
+                    row.deliveryMethod || null,
+                    row.letterLanguage || null,
                     row.id,
                     userId
                 ];
@@ -256,7 +266,6 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
                 if (result.rowCount > 0) {
                     updatedCount++;
                 } else {
-                    console.warn(`⚠️ No rows updated for ID ${row.id}`);
                 }
             }
         }
@@ -276,10 +285,13 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
                         hi_subject,
                         eng_sent_by,
                         hi_sent_by,
+                        letter_no,
+                        delivery_method,
+                        language,
                         user_id,
                         created_at,
                         updated_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     RETURNING id
                 `;
                 
@@ -295,6 +307,9 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
                     row.subjectHindi || null,
                     row.sentBy || null,
                     row.sentByHindi || null,
+                    row.letterNo || null,
+                    row.deliveryMethod || null,
+                    row.letterLanguage || null,
                     userId
                 ];
                 
@@ -310,7 +325,6 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
         await client.query('COMMIT');
         
         const totalOperations = updatedCount + insertedCount;
-        console.log(`✅ User ${userId} optimization complete: ${updatedCount} updated, ${insertedCount} inserted`);
         
         res.json({
             success: true,
@@ -323,7 +337,7 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
         
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('❌ Optimized save error:', error);
+        console.error(' Optimized save error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
