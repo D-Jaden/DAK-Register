@@ -74,7 +74,6 @@ router.post('/save', authenticateJWT, async (req, res) => {
             });
         }
         
-        console.log(`📝 User ${userId} attempting to save ${data.length} acquired rows`);
         
         await client.query('BEGIN');
         
@@ -88,9 +87,10 @@ router.post('/save', authenticateJWT, async (req, res) => {
                     hi_received_from, 
                     letter_no, 
                     eng_subject, 
-                    hi_subject, 
+                    hi_subject,
+                    language,
                     user_id
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             `;
             const pgDate = formatDateForPostgres(row.acquiredDate);
             const values = [
@@ -101,6 +101,7 @@ router.post('/save', authenticateJWT, async (req, res) => {
                 row.letterNumber || null,  
                 row.subject || null,
                 row.subjectHindi || null,
+                row.letterLanguage || null,
                 userId
             ];
             
@@ -109,7 +110,6 @@ router.post('/save', authenticateJWT, async (req, res) => {
         }
         
         await client.query('COMMIT');
-        console.log(`✅ User ${userId} successfully saved ${savedCount} acquired rows`);
         
         res.json({
             success: true,
@@ -119,7 +119,7 @@ router.post('/save', authenticateJWT, async (req, res) => {
         
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('❌ Database save error:', error);
+        console.error(' Database save error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -136,7 +136,6 @@ router.post('/save', authenticateJWT, async (req, res) => {
 router.get('/load', authenticateJWT, async (req, res) => {
     try {
         const userId = req.user.user_id;
-        console.log(`📥 Loading acquired data for user ${userId}`);
         
         const result = await pool.query(
             `SELECT 
@@ -148,6 +147,7 @@ router.get('/load', authenticateJWT, async (req, res) => {
                 letter_no, 
                 eng_subject, 
                 hi_subject,
+                language,
                 created_at,
                 updated_at
             FROM acquired 
@@ -156,7 +156,6 @@ router.get('/load', authenticateJWT, async (req, res) => {
             [userId]
         );
         
-        console.log(`📊 Found ${result.rows.length} acquired records for user ${userId}`);
         
         const transformedData = result.rows.map(row => ({
             id: row.id,
@@ -167,6 +166,7 @@ router.get('/load', authenticateJWT, async (req, res) => {
             letterNumber: row.letter_no || '', 
             subject: row.eng_subject || '',
             subjectHindi: row.hi_subject || '',
+            letterLanguage: row.language || '',
             isFromDatabase: true,
             hasChanges: false
         }));
@@ -178,7 +178,7 @@ router.get('/load', authenticateJWT, async (req, res) => {
         });
         
     } catch (error) {
-        console.error('❌ Database load error:', error);
+        console.error(' Database load error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
@@ -197,10 +197,6 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
         const { changedRows, newRows } = req.body;
         const userId = req.user.user_id;
         
-        console.log(`🔄 User ${userId} saving optimized acquired changes:`, {
-            changedRows: changedRows.length,
-            newRows: newRows.length
-        });
 
         await client.query('BEGIN');
         
@@ -216,11 +212,12 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
                         acquired_date = $1,
                         eng_received_from = $2,
                         hi_received_from = $3,
-                        letter_no = $4,  -- Using letter_no instead of eng_letter_number
+                        letter_no = $4,
                         eng_subject = $5,
                         hi_subject = $6,
+                        language = $7,
                         updated_at = CURRENT_TIMESTAMP
-                    WHERE id = $7 AND user_id = $8
+                    WHERE id = $8 AND user_id = $9
                 `;
                 
                 const pgDate = formatDateForPostgres(row.acquiredDate);
@@ -231,6 +228,7 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
                     row.letterNumber || null,
                     row.subject || null,
                     row.subjectHindi || null,
+                    row.letterLanguage || null,
                     row.id,
                     userId
                 ];
@@ -239,7 +237,6 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
                 if (result.rowCount > 0) {
                     updatedCount++;
                 } else {
-                    console.warn(`⚠️ No rows updated for ID ${row.id}`);
                 }
             }
         }
@@ -256,10 +253,11 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
                         letter_no,
                         eng_subject,
                         hi_subject,
+                        language,
                         user_id,
                         created_at,
                         updated_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     RETURNING id
                 `;
                 
@@ -272,6 +270,7 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
                     row.letterNumber || null, 
                     row.subject || null,
                     row.subjectHindi || null,
+                    row.letterLanguage || null,
                     userId
                 ];
                 
@@ -287,7 +286,6 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
         await client.query('COMMIT');
         
         const totalOperations = updatedCount + insertedCount;
-        console.log(`✅ User ${userId} acquired optimization complete: ${updatedCount} updated, ${insertedCount} inserted`);
         
         res.json({
             success: true,
@@ -300,7 +298,7 @@ router.post('/save-changes', authenticateJWT, async (req, res) => {
         
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('❌ Optimized acquired save error:', error);
+        console.error(' Optimized acquired save error:', error);
         res.status(500).json({
             success: false,
             error: 'Database error: ' + error.message
