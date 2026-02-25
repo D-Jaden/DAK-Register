@@ -135,7 +135,6 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     position: relative;
-    height:180px;
 }
 
 /* Main features container */
@@ -643,9 +642,7 @@ body {
 /*-----------------------------------------------------------------------*/
 .table-container {
     padding: 20px;
-    table-layout: fixed;
-    overflow-x: hidden !important;
-    overflow-y: visible !important;
+    overflow: visible;
     position: relative;
 }
 
@@ -654,11 +651,7 @@ body {
     border-collapse: collapse;
     background: white;
     border-radius: 8px;
-    overflow: visible; 
     box-shadow: 0 0 20px rgba(0,0,0,0.1);
-    position: relative;
-    bottom: 7rem;
-    left: 4rem;
 }
 
 .excel-table thead {
@@ -694,7 +687,7 @@ body {
     padding: 0;
     border: 1px solid #e1e8ed;
     background: white;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease;
     overflow-wrap: break-word;
     white-space: normal;
     vertical-align: top;
@@ -710,7 +703,7 @@ body {
 
 .cell {
     width: 100%;
-    min-height: 53px;
+    min-height: 70px;
     height: auto;
     padding: 12px;
     border: none;
@@ -719,7 +712,7 @@ body {
     font-family: inherit;
     background: transparent;
     cursor: text;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease;
     display: block;
     text-align: left;
     box-sizing: border-box;
@@ -732,7 +725,7 @@ body {
 
 .hindi-cell {
     width: 100%;
-    min-height: 53px;
+    min-height: 70px;
     height: auto;
     padding: 8px 12px;
     border: none;
@@ -741,7 +734,7 @@ body {
     font-family: 'Noto Sans Devanagari', 'Segoe UI', sans-serif;
     background: #f8f9fa;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease;
     display: block;
     text-align: left;
     border-top: 1px solid #e1e8ed;
@@ -772,14 +765,15 @@ body {
     font-weight: 600;
     color: #6c757d;
     text-align: center;
-    width: 60px;
+    width: 4%;
+    min-width: 50px;
     border-right: 2px solid #dee2e6;
     vertical-align: middle;
 }
 
 .excel-table tr {
     height: auto;
-    min-height: 60px;
+    min-height: 80px;
 }
 
 .excel-table tr:nth-child(even) td:not(.row-number) {
@@ -892,11 +886,107 @@ body {
 .search-btn.clear:hover {
     background: #2e8b2b;
 }
+/*==============================================================================*/
+/* RADIO BUTTON CELLS - Letter Language - FIXED                                */
+/*==============================================================================*/
 
+/* EARLY OVERRIDE: Block ALL hover effects on radio cell BEFORE they apply */
+.excel-table td:last-child,
+.excel-table td:nth-child(7) {
+    transition: none !important;
+    background: white !important;
+    background-color: white !important;
+    background-image: none !important;
+    height: 90px !important;
+    min-height: 90px !important;
+    max-height: 90px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    /* Block the gradient hover from applying */
+    background: white !important;
+}
+
+/* FORCE row hover to skip the radio cell completely */
+.excel-table tr:hover td:last-child,
+.excel-table tr:hover td:nth-child(7),
+.excel-table tr:hover td:last-child *,
+.excel-table tr:hover td:nth-child(7) * {
+    background: white !important;
+    background-color: white !important;
+    background-image: none !important;
+    transform: none !important;
+    transition: none !important;
+}
+
+/* The radio-cell container - completely static */
+.radio-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 10px;
+    height: 90px;
+    min-height: 90px;
+    max-height: 90px;
+    justify-content: space-evenly;
+    background: white !important;
+    box-sizing: border-box;
+    overflow: hidden;
+    transition: none !important;
+    transform: none !important;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #2c3e50;
+    cursor: pointer;
+    height: 24px;
+    min-height: 24px;
+    max-height: 24px;
+    padding: 0 5px;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+    /* Only background color transition */
+    transition: background-color 0.12s ease, border-left-color 0.12s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    user-select: none;
+    box-sizing: border-box;
+    font-weight: 400;
+    line-height: 24px;
+}
+
+.radio-label:hover {
+    background-color: #e8f4fd;
+}
+
+.radio-label input[type="radio"] {
+    width: 14px;
+    height: 14px;
+    accent-color: #2577ad;
+    cursor: pointer;
+    flex-shrink: 0;
+    min-width: 14px;
+    margin: 0;
+    padding: 0;
+    vertical-align: middle;
+    transition: none;
+}
+
+/* Checked state - NO font-weight change! */
+.radio-label:has(input[type="radio"]:checked) {
+    background-color: #d6eaf8;
+    color: #1a5276;
+    font-weight: 400; /* Keep same weight to prevent shift */
+    border-left-color: #2577ad;
+}
 /*----------------------------------------------ROW INSERTION--------------------------------------------------------------*/
 .insert-row-btn {
     position: absolute;
-    right: -120px;
+    right: 4px;
     top: 50%;
     transform: translateY(-50%);
     background: #000000;
@@ -953,14 +1043,10 @@ body {
     position: relative;
 }
 
-.table-container {
-    padding-right: 140px;
-}
+/* insert-row-btn now lives inside the td, no extra padding needed */
 
 /*-----------------------------BOTTOM-BUTTONS------------------------------*/
 .add-row-btn {
-    position:relative;
-    bottom:8rem;
     margin: 20px 0;
     padding: 12px 24px;
     background: linear-gradient(135deg, #18A209 0%, #18a209e7 100%);
@@ -984,8 +1070,6 @@ body {
 }
 
 .save-btn {
-    position:relative;
-    bottom:8rem;
     margin: 30px 0px;
     padding: 12px 24px;
     background: linear-gradient(135deg, #18A209 0%, #18a209f9 100%);
@@ -1009,8 +1093,6 @@ body {
 }
 
 .switch-btn {
-    position:relative;
-    bottom:8rem;
     margin: 35px 0px;
     padding: 12px 24px;
     background: linear-gradient(135deg, #001a70 0%, #201c62 100%);
@@ -1056,9 +1138,8 @@ body {
 }
 
 .logout-btn {
-    position:relative;
-    bottom:14rem;
-    left:110rem;
+    display: block;
+    margin: 10px 20px 20px auto;
     padding: 12px 24px;
     background: linear-gradient(135deg, #dd2121 0%, #e40b0be7 100%);
     color: white;
@@ -1100,7 +1181,7 @@ body {
 
 /* Add indicator icons */
 .row-changed td:first-child::before {
-    content: "✏️";
+    content: "Editing";
     position: absolute;
     left: 2px;
     top: 50%;
@@ -1109,7 +1190,7 @@ body {
 }
 
 .row-new td:first-child::before {
-    content: "✨";
+    content: "Adding";
     position: absolute;
     left: 2px;
     top: 50%;
@@ -1195,14 +1276,8 @@ body {
         font-size: 10px;
         padding: 2px 6px;
     }
-    
-    .table-container {
-        padding-right: 110px;
-    }
     .button-container{
         position: relative;
-        bottom:6rem;
-        left:4rem;
     }
 
 }
