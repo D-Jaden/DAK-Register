@@ -133,7 +133,6 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     position: relative;
-    height:180px;
 }
 
 /* Mobile menu toggle button */
@@ -653,8 +652,7 @@ body {
 .table-container {
     padding: 20px;
     table-layout: fixed;
-    overflow-x: hidden !important;
-    overflow-y: visible !important; 
+    overflow: visible;
     position: relative; 
 }
 
@@ -668,9 +666,7 @@ body {
     border-radius: 8px;
     overflow: visible;
     box-shadow: 0 0 20px rgba(0,0,0,0.1);
-    position :relative;
-    bottom:7rem;
-    left:4rem;
+    position: relative;
     overflow: visible !important;
 }
 
@@ -719,7 +715,7 @@ body {
 
 .cell {
     width: 100%;
-    min-height: 53px;
+    min-height: 70px;
     height: auto; 
     padding: 12px;
     border: none;
@@ -741,7 +737,7 @@ body {
 
 .hindi-cell {
     width: 100%;
-    min-height: 53px; 
+    min-height: 70px; 
     height: auto; 
     padding: 8px 12px;
     border: none;
@@ -781,14 +777,15 @@ body {
     font-weight: 600;
     color: #6c757d;
     text-align: center;
-    width: 60px;
+    width: 4%;
+    min-width: 50px;
     border-right: 2px solid #dee2e6;
     vertical-align: middle; /* Center vertically */
 }
 
 .excel-table tr {
     height: auto; /* Allow rows to expand with wrapped content */
-    min-height: 60px; /* Minimum row height */
+    min-height: 80px; /* Minimum row height */
 }
 
 .excel-table tr:nth-child(even) td:not(.row-number) {
@@ -927,7 +924,7 @@ body {
 /*----------------------------------------------ROW INSERTION--------------------------------------------------------------*/
 .insert-row-btn {
     position: absolute;
-    right: -120px;
+    right: 4px;
     top: 50%;
     transform: translateY(-50%);
     background: #000000;
@@ -983,15 +980,12 @@ body {
 .excel-table tbody tr {
     position: relative;
 }
-
 .table-container {
-    padding-right: 140px;
+    padding: 15px;
 }
 
 /*-----------------------------BOTTOM-BUTTONS------------------------------*/
 .add-row-btn {
-    position:relative;
-    bottom:8rem;
     margin: 20px 0;
     padding: 12px 24px;
     background: linear-gradient(135deg, #18A209 0%, #18a209e7 100%);
@@ -1015,8 +1009,6 @@ body {
 }
 
 .save-btn {
-    position:relative;
-    bottom:8rem;
     margin: 30px 0px;
     padding: 12px 24px;
     background: linear-gradient(135deg, #18A209 0%, #18a209f9 100%);
@@ -1039,8 +1031,6 @@ body {
     transform: translateY(0);
 }
 /*.load-btn {
-    position:relative;
-    bottom:8rem;
     right:0;
     margin: 30px 0px;
     padding: 12px 24px;
@@ -1058,8 +1048,6 @@ body {
     box-shadow: 0 6px 20px rgba(9, 31, 180, 0.772);
 }*/
 .switch-btn {
-    position:relative;
-    bottom:8rem;
     margin: 35px 0px;
     padding: 12px 24px;
     background: linear-gradient(135deg, #001a70 0%, #201c62 100%);
@@ -1104,9 +1092,8 @@ body {
     opacity: 1;
 }
 .logout-btn {
-    position:relative;
-    bottom:14rem;
-    left:110rem;
+    display: block;
+    margin: 10px 20px 20px auto;
     padding: 12px 24px;
     background: linear-gradient(135deg, #dd2121 0%, #e40b0be7 100%);
     color: white;
@@ -1148,7 +1135,7 @@ body {
 
 /* Add indicator icons */
 .row-changed td:first-child::before {
-    content: "✏️";
+    content: "Editing";
     position: absolute;
     left: 2px;
     top: 50%;
@@ -1157,7 +1144,7 @@ body {
 }
 
 .row-new td:first-child::before {
-    content: "✨";
+    content: "Adding";
     position: absolute;
     left: 2px;
     top: 50%;
@@ -1243,14 +1230,12 @@ body {
         font-size: 10px;
         padding: 2px 6px;
     }
-    
     .table-container {
-        padding-right: 110px;
+        padding: 15px;
     }
     .button-container{
         position: relative;
         bottom:6rem;
-        left:4rem;
     }
 
 }
@@ -1376,18 +1361,122 @@ body {
     .logout-btn {
         display: block;
         font-size: 15px;
-        position: relative;
-        bottom: 16.9rem;
-        left:28rem;
-    }
+                    }
 }
 @media (max-width: 480px) {
     .logout-btn {
         width: 100%;
         font-size: 13px;
         margin: 10px auto 0 auto;
-        position: relative;
-        bottom: 16.9rem;
-        left:10rem;
-    }
+                    }
+}
+/*==============================================================================*/
+/* RADIO BUTTON CELLS - New Fields: Delivery Method & Letter Language          */
+/*==============================================================================*/
+
+.radio-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    min-height: 70px;
+    justify-content: center;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #2c3e50;
+    cursor: pointer;
+    padding: 3px 5px;
+    border-radius: 4px;
+    border-left: 3px solid transparent; /* always reserve space — prevents layout shift on hover/check */
+    transition: background-color 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    min-height: 22px;
+    box-sizing: border-box;
+}
+
+.radio-label:hover {
+    background-color: #e8f4fd;
+}
+
+.radio-label input[type="radio"] {
+    width: 15px;
+    height: 15px;
+    accent-color: #2577ad;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.radio-label input[type="radio"]:checked + * {
+    font-weight: 600;
+    color: #1a5276;
+}
+
+/* Highlight the whole label when its radio is checked */
+.radio-label:has(input[type="radio"]:checked) {
+    background-color: #d6eaf8;
+    color: #1a5276;
+    font-weight: 600;
+    border-left-color: #2577ad; /* only change colour, space already reserved */
+}
+
+/* Column widths - % based for responsiveness */
+.excel-table th.date,
+.excel-table td:nth-child(2) {
+    width: 8%;
+    min-width: 110px;
+}
+
+.excel-table th.whomSent,
+.excel-table td:nth-child(3) {
+    width: 16%;
+    min-width: 150px;
+}
+
+.excel-table th.place,
+.excel-table td:nth-child(4) {
+    width: 10%;
+    min-width: 120px;
+}
+
+.excel-table th.subject,
+.excel-table td:nth-child(5) {
+    width: 18%;
+    min-width: 150px;
+}
+
+.excel-table th.sentBy,
+.excel-table td:nth-child(6) {
+    width: 14%;
+    min-width: 140px;
+}
+
+.excel-table th.letterNo,
+.excel-table td:nth-child(7) {
+    width: 10%;
+    min-width: 150px;
+}
+
+.excel-table th.deliveryMethod,
+.excel-table td:nth-child(8) {
+    width: 12%;
+    min-width: 160px;
+}
+
+.excel-table th.letterLanguage,
+.excel-table td:nth-child(9) {
+    width: 12%;
+    min-width: 140px;
+}
+
+.excel-table {
+    min-width: 1200px;
 }
