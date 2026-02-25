@@ -30,7 +30,8 @@ function createRowHash(rowData) {
         receivedFromHindi: rowData.receivedFromHindi || '',
         letterNumber: rowData.letterNumber || '',
         subject: rowData.subject || '',
-        subjectHindi: rowData.subjectHindi || ''
+        subjectHindi: rowData.subjectHindi || '',
+        letterLanguage: rowData.letterLanguage || ''
     };
     return JSON.stringify(relevantData);
 }
@@ -74,11 +75,11 @@ document.addEventListener('click', function(event) {
 });
 
 function switchPage(targetPage) {
-    // ⭐ Sync BEFORE saving
+    // â­ Sync BEFORE saving
     syncTableDataWithDOM();
     
-    sessionStorage.setItem('preservedTableData', JSON.stringify(tableData));
-    sessionStorage.setItem('preservedRowCount', rowCount.toString());
+    sessionStorage.setItem('acquired_preservedTableData', JSON.stringify(tableData));
+    sessionStorage.setItem('acquired_preservedRowCount', rowCount.toString());
     
     localStorage.setItem('flipTo', targetPage);
     const flipContainer = document.getElementById('flipContainer');
@@ -362,38 +363,38 @@ let isDataLoaded = false;
 function initializeTable() {
 
     if (window.tableInitialized) {
-        console.log('⏭️ Table already initialized, skipping...');
+        console.log('¸ Table already initialized, skipping...');
         return;
     }
 
-    const preservedData = sessionStorage.getItem('preservedTableData');
-    const preservedRowCount = sessionStorage.getItem('preservedRowCount');
+    const preservedData = sessionStorage.getItem('acquired_preservedTableData');
+    const preservedRowCount = sessionStorage.getItem('acquired_preservedRowCount');
     
     if (preservedData && preservedRowCount) {
-        console.log('🔄 Restoring data from previous page...');
+        console.log('Restoring data from previous page...');
         tableData = JSON.parse(preservedData);
         rowCount = parseInt(preservedRowCount);
         rebuildTable();
         
         // Clear the preserved data
-        sessionStorage.removeItem('preservedTableData');
-        sessionStorage.removeItem('preservedRowCount');
+        sessionStorage.removeItem('acquired_preservedTableData');
+        sessionStorage.removeItem('acquired_preservedRowCount');
         
         setupRowInsertion();
         attachAllEventListeners();
         window.tableInitialized = true;
         
-        console.log('✅ Data restored from page switch!');
+        console.log('Data restored from page switch!');
         return; 
     }
     
     const userIsAuthenticated = isAuthenticated();
 
     if (userIsAuthenticated) {
-        console.log('🔄 Authenticated user - loading data...');
+        console.log('Authenticated user - loading data...');
         loadUserData(); // This will handle BOTH cases: existing data OR new user
     } else {
-        console.log('📝 Guest user - initializing with 6 empty rows...');
+        console.log('Guest user - initializing with 6 empty rows...');
         for (let i = 0; i < 6; i++) {
             addNewRow();
         }
@@ -408,9 +409,9 @@ function initializeTable() {
     const saveBtn = document.querySelector('.save-btn');
     if (saveBtn) {
         saveBtn.addEventListener('click', saveToDatabase);
-        console.log('✅ Save button listener attached');
+        console.log(' Save button listener attached');
     } else {
-        console.error('❌ Save button not found!');
+        console.error(' Save button not found!');
     }
 
     document.querySelectorAll('.hamburger-btn').forEach(btn => {
@@ -424,7 +425,8 @@ function initializeTable() {
                 'acquiredDate': 'acquiredDate',
                 'receivedFrom': 'receivedFrom',
                 'letterNumber': 'letterNumber',
-                'subject': 'subject'
+                'subject': 'subject',
+                'letterLanguage': 'letterLanguage'
             };
 
             const field = columnMap[column] || column;
@@ -489,7 +491,7 @@ function initializeTable() {
             e.preventDefault();
             undo();
         });
-        console.log('✅ Undo button listener attached');
+        console.log(' Undo button listener attached');
     }
 
     if (redoBtn) {
@@ -497,7 +499,7 @@ function initializeTable() {
             e.preventDefault();
             redo();
         });
-        console.log('✅ Redo button listener attached');
+        console.log(' Redo button listener attached');
     }
 
     updateUndoRedoButtons();
@@ -517,9 +519,9 @@ function attachAllEventListeners() {
     const saveBtn = document.querySelector('.save-btn');
     if (saveBtn) {
         saveBtn.addEventListener('click', saveToDatabase);
-        console.log('✅ Save button listener attached');
+        console.log(' Save button listener attached');
     } else {
-        console.error('❌ Save button not found!');
+        console.error(' Save button not found!');
     }
     
     //============================
@@ -611,7 +613,7 @@ function attachAllEventListeners() {
             e.preventDefault();
             undo();
         });
-        console.log('✅ Undo button listener attached');
+        console.log(' Undo button listener attached');
     }
 
     if (redoBtn) {
@@ -619,7 +621,7 @@ function attachAllEventListeners() {
             e.preventDefault();
             redo();
         });
-        console.log('✅ Redo button listener attached');
+        console.log(' Redo button listener attached');
     }
 
     updateUndoRedoButtons();
@@ -880,7 +882,7 @@ function addContentEditableListeners(div) {
             
             if (tableData[row].isFromDatabase) {
                 const currentHash = createRowHash(tableData[row]);
-                const originalHash = originalData.get(row);
+                const originalHash = originalData.get(tableData[row].id);
                 
                 if (currentHash !== originalHash) {
                     changedRows.add(row);
@@ -1249,7 +1251,8 @@ function addNewRow() {
         letterNumber: '',
         subject: '',
         subjectHindi: '',
-        signature: ''
+        signature: '',
+        letterLanguage: ''
     };
     tableData.push(rowData);
     
@@ -1269,6 +1272,13 @@ function addNewRow() {
         </td>
         <td>
             <input type="text" class="cell english-cell" data-row="${rowCount-1}" data-field="signature" placeholder="Signature..." style="height: 53px;">
+        </td>
+        <td>
+            <div class="radio-cell" data-row="${rowCount-1}" data-field="letterLanguage">
+                <label class="radio-label"><input type="radio" name="acq_letterLanguage_${rowCount-1}" value="Hindi" onchange="saveRadioValue(this)"> Hindi</label>
+                <label class="radio-label"><input type="radio" name="acq_letterLanguage_${rowCount-1}" value="English" onchange="saveRadioValue(this)"> English</label>
+                <label class="radio-label"><input type="radio" name="acq_letterLanguage_${rowCount-1}" value="Bilingual" onchange="saveRadioValue(this)"> Bilingual</label>
+            </div>
         </td>
     `;
 
@@ -1303,21 +1313,28 @@ function syncTableDataWithDOM() {
     const tbody = document.getElementById('tableBody');
     const rows = tbody.querySelectorAll('tr');
     
-    rows.forEach((row, index) => {
-        if (!tableData[index]) {
-            tableData[index] = {
+    rows.forEach((row) => {
+        // Use data-row from the first cell to get the CORRECT tableData index.
+        // DOM index (0,1,2...) is wrong on page 2+ because rebuildTable uses
+        // startIdx+index for data-row, so DOM row 0 on page 2 = tableData[6].
+        const firstCell = row.querySelector('[data-row]');
+        if (!firstCell) return;
+        const dataIndex = parseInt(firstCell.getAttribute('data-row'));
+        if (isNaN(dataIndex)) return;
+
+        if (!tableData[dataIndex]) {
+            tableData[dataIndex] = {
                 acquiredDate: '',
                 receivedFrom: '',
                 receivedFromHindi: '',
                 letterNumber: '',
                 subject: '',
                 subjectHindi: '',
-                signature: ''
+                signature: '',
+                letterLanguage: ''
             };
         }
-        
-        const allCells = row.querySelectorAll('.cell, [contenteditable="true"].cell');
-        
+
         const getCellValue = (cell) => {
             if (!cell) return '';
             if (cell.tagName === 'INPUT') return cell.value;
@@ -1325,14 +1342,30 @@ function syncTableDataWithDOM() {
             if (cell.contentEditable === 'true') return cell.innerHTML;
             return '';
         };
-        
-        if (allCells[0]) tableData[index].acquiredDate = getCellValue(allCells[0]);
-        if (allCells[1]) tableData[index].receivedFrom = getCellValue(allCells[1]);
-        if (allCells[2]) tableData[index].receivedFromHindi = getCellValue(allCells[2]);
-        if (allCells[3]) tableData[index].letterNumber = getCellValue(allCells[3]);
-        if (allCells[4]) tableData[index].subject = getCellValue(allCells[4]);
-        if (allCells[5]) tableData[index].subjectHindi = getCellValue(allCells[5]);
-        if (allCells[6]) tableData[index].signature = getCellValue(allCells[6]);
+
+        // Use data-field attributes instead of positional index — reliable regardless of page
+        const getField = (field) => {
+            const el = row.querySelector(`[data-field="${field}"]`);
+            return el ? getCellValue(el) : (tableData[dataIndex][field] || '');
+        };
+
+        tableData[dataIndex].acquiredDate      = getField('acquiredDate');
+        tableData[dataIndex].receivedFrom      = getField('receivedFrom');
+        tableData[dataIndex].receivedFromHindi = getField('receivedFromHindi');
+        tableData[dataIndex].letterNumber      = getField('letterNumber');
+        tableData[dataIndex].subject           = getField('subject');
+        tableData[dataIndex].subjectHindi      = getField('subjectHindi');
+        tableData[dataIndex].signature         = getField('signature');
+
+        // Radio buttons — also use data-field
+        const radioCells = row.querySelectorAll('.radio-cell');
+        radioCells.forEach(radioCell => {
+            const field = radioCell.getAttribute('data-field');
+            const checkedRadio = radioCell.querySelector('input[type="radio"]:checked');
+            if (field && tableData[dataIndex]) {
+                if (checkedRadio) tableData[dataIndex][field] = checkedRadio.value;
+            }
+        });
     });
 }
 
@@ -1356,6 +1389,15 @@ function getCellValueByColumn(row, column) {
             return getCellValue(allCells[3]);
         case 'subject':
             return getCellValue(allCells[4]);
+        case 'letterLanguage': {
+            // Radio button - not in .cell selector, use DOM lookup
+            const radioCell = row.querySelector('.radio-cell[data-field="letterLanguage"]');
+            if (radioCell) {
+                const checked = radioCell.querySelector('input[type="radio"]:checked');
+                return checked ? checked.value : '';
+            }
+            return '';
+        }
         default:
             return '';
     }
@@ -1387,27 +1429,41 @@ function setupRowInsertion() {
 }
 
 function addRowInsertionListeners(row) {
+    // Skip if already has an insert button
+    if (row.querySelector('.insert-row-btn')) return;
+
     const insertBtn = document.createElement('div');
     insertBtn.className = 'insert-row-btn';
     insertBtn.innerHTML = '+ Insert Row';
     insertBtn.style.display = 'none';
-    
-    row.style.position = 'relative';
-    row.appendChild(insertBtn);
-    
+
+    // Append into the last <td> NOT into <tr>.
+    // Appending a <div> directly to <tr> is invalid HTML — the browser
+    // re-parses the broken structure on every mouseenter/mouseleave toggle,
+    // causing a full row reflow that makes the radio cell collapse/expand.
+    const lastTd = row.querySelector('td:last-child');
+    if (lastTd) {
+        lastTd.style.position = 'relative';
+        lastTd.appendChild(insertBtn);
+    } else {
+        // Fallback for edge cases
+        row.style.position = 'relative';
+        row.appendChild(insertBtn);
+    }
+
     row.addEventListener('mouseenter', function() {
         insertBtn.style.display = 'block';
     });
-    
+
     row.addEventListener('mouseleave', function() {
         insertBtn.style.display = 'none';
     });
-    
+
     insertBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         insertRowAfter(row);
     });
-    
+
     row.addEventListener('contextmenu', function(e) {
         e.preventDefault();
         showContextMenu(e, row);
@@ -1420,7 +1476,7 @@ function addRowInsertionListeners(row) {
 
 async function loadUserData() {
     if (window.isLoadingData) {
-        console.log('⏭️ Already loading data, skipping duplicate call...');
+        console.log('Already loading data, skipping duplicate call...');
         return;
     }
 
@@ -1432,7 +1488,7 @@ async function loadUserData() {
     window.isLoadingData = true;
 
     try {
-        console.log('📥 Loading user data...');
+        console.log('ðŸ“¥ Loading user data...');
         
         const response = await fetch('/api/acquired/load', {
             method: 'GET',
@@ -1456,14 +1512,14 @@ async function loadUserData() {
         const result = await response.json();
         
         if (result.success && result.data && result.data.length > 0) {
-            console.log(`📊 Loaded ${result.data.length} existing records`);
+            console.log(`Loaded ${result.data.length} existing records`);
             
             originalData.clear();
             changedRows.clear();
             newRows.clear();
             
             tableData = result.data.map((row, index) => {
-                originalData.set(index, createRowHash(row));
+                originalData.set(row.id, createRowHash(row));
                 
                 return {
                     id: row.id,
@@ -1475,6 +1531,7 @@ async function loadUserData() {
                     subject: row.subject || '',
                     subjectHindi: row.subjectHindi || '',
                     signature: row.signature || '',
+                    letterLanguage: row.letterLanguage || '',
                     isFromDatabase: true,
                     hasChanges: false
                 };
@@ -1483,12 +1540,12 @@ async function loadUserData() {
             rowCount = tableData.length;
             rebuildTable();
             
-            console.log('✅ User data loaded and displayed');
+            console.log(' User data loaded and displayed');
             showNotification(`Loaded ${result.data.length} existing records`, 'success');
             
         } else {
             // NEW USER - NO DATA FOUND
-            console.log('📭 No existing data found for user, creating 6 empty rows...');
+            console.log('ðŸ“­ No existing data found for user, creating 6 empty rows...');
             
             // Clear any existing data
             tableData = [];
@@ -1504,7 +1561,7 @@ async function loadUserData() {
         }
         
     } catch (error) {
-        console.error('❌ Error loading user data:', error);
+        console.error(' Error loading user data:', error);
         showNotification('Error loading data. Starting fresh.', 'error');
         
         // Fallback: Create 6 empty rows
@@ -1537,7 +1594,8 @@ function insertRowAfter(targetRow) {
         letterNumber: '',
         subject: '',
         subjectHindi: '',
-        signature: ''
+        signature: '',
+        letterLanguage: ''
     };
     tableData.splice(targetIndex + 1, 0, rowData);
     
@@ -1557,6 +1615,13 @@ function insertRowAfter(targetRow) {
         </td>
         <td>
             <input type="text" class="cell english-cell" data-row="${targetIndex + 1}" data-field="signature" placeholder="Signature..." style="height: 53px;">
+        </td>
+        <td>
+            <div class="radio-cell" data-row="${targetIndex + 1}" data-field="letterLanguage">
+                <label class="radio-label"><input type="radio" name="acq_letterLanguage_${targetIndex + 1}" value="Hindi" onchange="saveRadioValue(this)"> Hindi</label>
+                <label class="radio-label"><input type="radio" name="acq_letterLanguage_${targetIndex + 1}" value="English" onchange="saveRadioValue(this)"> English</label>
+                <label class="radio-label"><input type="radio" name="acq_letterLanguage_${targetIndex + 1}" value="Bilingual" onchange="saveRadioValue(this)"> Bilingual</label>
+            </div>
         </td>
     `;
     
@@ -1651,7 +1716,8 @@ function insertRowBefore(targetRow) {
         letterNumber: '',
         subject: '',
         subjectHindi: '',
-        signature: ''
+        signature: '',
+        letterLanguage: ''
     };
     tableData.splice(targetIndex, 0, rowData);
     
@@ -1671,6 +1737,13 @@ function insertRowBefore(targetRow) {
         </td>
         <td>
             <input type="text" class="cell english-cell" data-row="${targetIndex}" data-field="signature" placeholder="Signature..." style="height: 53px;">
+        </td>
+        <td>
+            <div class="radio-cell" data-row="${targetIndex}" data-field="letterLanguage">
+                <label class="radio-label"><input type="radio" name="acq_letterLanguage_${targetIndex}" value="Hindi" onchange="saveRadioValue(this)"> Hindi</label>
+                <label class="radio-label"><input type="radio" name="acq_letterLanguage_${targetIndex}" value="English" onchange="saveRadioValue(this)"> English</label>
+                <label class="radio-label"><input type="radio" name="acq_letterLanguage_${targetIndex}" value="Bilingual" onchange="saveRadioValue(this)"> Bilingual</label>
+            </div>
         </td>
     `;
     
@@ -1697,6 +1770,31 @@ function deleteRow(row, index) {
     row.remove();
     updateRowNumbers();
     rowCount--;
+}
+
+// Save radio button value to tableData
+function saveRadioValue(radioInput) {
+    const radioCell = radioInput.closest('.radio-cell');
+    if (!radioCell) return;
+    const row = parseInt(radioCell.getAttribute('data-row'));
+    const field = radioCell.getAttribute('data-field');
+    const value = radioInput.value;
+    
+    if (tableData[row]) {
+        tableData[row][field] = value;
+        
+        if (tableData[row].isFromDatabase) {
+            const currentHash = createRowHash(tableData[row]);
+            const originalHash = originalData.get(tableData[row].id);
+            if (currentHash !== originalHash) {
+                changedRows.add(row);
+                tableData[row].hasChanges = true;
+            }
+        } else {
+            newRows.add(row);
+        }
+        updateRowVisualStatus(row);
+    }
 }
 
 function addCellEventListeners(cell) {
@@ -1740,7 +1838,7 @@ function addCellEventListeners(cell) {
 //==============================================
 
 function validateRowData(rowData, rowIndex) {
-    const requiredFields = ['acquiredDate', 'receivedFrom', 'letterNumber', 'subject'];
+    const requiredFields = ['acquiredDate', 'receivedFrom', 'letterNumber', 'subject', 'letterLanguage'];
     const missingFields = [];
     
     for (const field of requiredFields) {
@@ -1808,6 +1906,23 @@ async function saveToDatabase() {
 
     const changedRowsData = [];
     const newRowsData = [];
+
+    tableData.forEach((rowData, rowIndex) => {
+        if (rowData.isFromDatabase) {
+            const currentHash = createRowHash(rowData);
+            const originalHash = originalData.get(rowIndex);
+            if (originalHash !== undefined && currentHash !== originalHash) {
+                changedRows.add(rowIndex);
+                rowData.hasChanges = true;
+            }
+        } else {
+            const hasAnyData = Object.entries(rowData).some(([k, v]) =>
+                k !== 'isFromDatabase' && k !== 'hasChanges' && k !== 'id' &&
+                v && v.toString().trim() !== ''
+            );
+            if (hasAnyData) newRows.add(rowIndex);
+        }
+    });
     
     changedRows.forEach(rowIndex => {
         if (tableData[rowIndex]) {
@@ -1843,19 +1958,19 @@ async function saveToDatabase() {
     }
 
     const confirmMessage = `Save ${totalChanges} changes?\n\n` +
-        `• ${newRowsData.length} new rows\n` +
-        `• ${changedRowsData.length} modified rows`;
+        ` ${newRowsData.length} new rows\n` +
+        ` ${changedRowsData.length} modified rows`;
         
     if (!confirm(confirmMessage)) {
         return;
     }
 
-    console.log(`🔄 Saving ${totalChanges} changed rows...`);
+    console.log(`„ Saving ${totalChanges} changed rows...`);
     
     try {
         const saveBtn = document.querySelector('.save-btn');
         const originalText = saveBtn.textContent;
-        saveBtn.textContent = '⏳ Saving Changes...';
+        saveBtn.textContent = ' Saving Changes...';
         saveBtn.disabled = true;
 
         const response = await fetch('/api/acquired/save-changes', {
@@ -1907,7 +2022,7 @@ async function saveToDatabase() {
                 row.classList.remove('row-changed', 'row-new');
             });
             
-            saveBtn.textContent = '✅ Changes Saved!';
+            saveBtn.textContent = ' Changes Saved!';
             setTimeout(() => {
                 saveBtn.textContent = originalText;
             }, 3000);
@@ -1919,11 +2034,11 @@ async function saveToDatabase() {
         }
         
     } catch (error) {
-        console.error('❌ Save error:', error);
-        alert('❌ Error saving changes: ' + error.message);
+        console.error(' Save error:', error);
+        alert(' Error saving changes: ' + error.message);
     } finally {
         const saveBtn = document.querySelector('.save-btn');
-        if (!saveBtn.textContent.includes('✅')) {
+        if (!saveBtn.textContent.includes('')) {
             saveBtn.textContent = 'Save Changes';
         }
         saveBtn.disabled = false;
@@ -1933,7 +2048,7 @@ async function saveToDatabase() {
 //============================================
 //TRANSLATION
 //============================================
-
+/*
 async function translateText(text) {
     if (translationCache.has(text)) {
         return translationCache.get(text);
@@ -2010,6 +2125,87 @@ async function translateTextBatch(texts) {
         return fallback;
     }
 }
+*/
+//============================================
+//TRANSLATION
+//============================================
+
+let gradioClient = null;
+
+async function getClient() {
+    if (!gradioClient) {
+        const { Client } = await import("https://esm.sh/@gradio/client");
+        gradioClient = await Client.connect("D-Jaden02/Krutrim_English_Hi_Translation");
+    }
+    return gradioClient;
+}
+
+async function translateText(text) {
+    if (!text?.trim()) return text;
+    if (translationCache.has(text)) return translationCache.get(text);
+
+    try {
+        const client = await getClient();
+        const result = await client.predict("/translate", { text: text });
+        const translated = result.data[0];
+        translationCache.set(text, translated);
+        return translated;
+    } catch (error) {
+        console.error('Translation error:', error);
+        return text;
+    }
+}
+
+async function translateTextBatch(texts) {
+    const client = await getClient(); // connect once
+    const results = await Promise.all(
+        texts.map(async (text) => {
+            if (translationCache.has(text)) return translationCache.get(text);
+            try {
+                const result = await client.predict("/translate", { text });
+                const translated = result.data[0];
+                translationCache.set(text, translated);
+                return translated;
+            } catch {
+                return text;
+            }
+        })
+    );
+    const map = {};
+    texts.forEach((t, i) => map[t] = results[i]);
+    return map;
+}
+
+async function translateText(text) {
+    console.log('Translation requested for:', text);
+
+    if (translationCache.has(text)) {
+        console.log('Using cached translation');
+        return translationCache.get(text);
+    }
+
+    try {
+        const { Client } = await import("https://esm.sh/@gradio/client");
+        const client = await Client.connect("D-Jaden02/Krutrim_English_Hi_Translation");
+        const result = await client.predict("/translate", { text: text });
+
+        const translated = result.data[0];
+        translationCache.set(text, translated);
+        console.log('Translation successful:', translated);
+        return translated;
+
+    } catch (error) {
+        console.error('Translation error:', error);
+        return text; // fallback to original
+    }
+}
+
+async function translateTextBatch(texts) {
+    const results = await Promise.all(texts.map(t => translateText(t)));
+    const map = {};
+    texts.forEach((t, i) => map[t] = results[i]);
+    return map;
+}
 
 async function saveData(cell) {
     const row = parseInt(cell.getAttribute('data-row'));
@@ -2023,12 +2219,12 @@ async function saveData(cell) {
         // Track changes (skip signature field as it's not required)
         if (field !== 'signature' && tableData[row].isFromDatabase) {
             const currentHash = createRowHash(tableData[row]);
-            const originalHash = originalData.get(row);
+            const originalHash = originalData.get(tableData[row].id);
             
             if (currentHash !== originalHash) {
                 changedRows.add(row);
                 tableData[row].hasChanges = true;
-                console.log(`📝 Row ${row + 1} marked as changed`);
+                console.log(`ðŸ“ Row ${row + 1} marked as changed`);
             } else {
                 changedRows.delete(row);
                 tableData[row].hasChanges = false;
@@ -2059,7 +2255,7 @@ async function saveData(cell) {
                 // Mark as changed if needed
                 if (tableData[row].isFromDatabase) {
                     const currentHash = createRowHash(tableData[row]);
-                    const originalHash = originalData.get(row);
+                    const originalHash = originalData.get(tableData[row].id);
                     
                     if (currentHash !== originalHash) {
                         changedRows.add(row);
@@ -2067,7 +2263,7 @@ async function saveData(cell) {
                     }
                 }
             } else {
-                console.warn(`⚠️ Hindi textarea not found for field: ${hindiField}`);
+                console.warn(` Hindi textarea not found for field: ${hindiField}`);
                 console.warn(`   Looking for: textarea[data-row="${row}"][data-field="${hindiField}"]`);
             }
         }
@@ -2126,96 +2322,96 @@ function exportToPDF() {
 
     const original = document.getElementById('excelTable');
     if (!original) {
-        console.error('Table element not found');
         showNotification('Error: Table not found', 'error');
         return;
     }
 
+    // ── 1. Clone and strip all live-DOM positioning ──────────────────
     const clone = original.cloneNode(true);
+    // BLANK-PAGE FIX: table has position:relative;bottom:7rem on screen.
+    // Resetting here ensures html2pdf captures from (0,0) with no top gap.
+    clone.style.cssText = [
+        'position:static',
+        'bottom:auto',
+        'left:auto',
+        'margin:0',
+        'width:100%',
+        'border-radius:0',
+        'box-shadow:none'
+    ].join(' !important;') + ' !important;';
 
+    // ── 2. Strip UI chrome ───────────────────────────────────────────
     clone.querySelectorAll('.hamburger-menu, .sort-dropdown, .insert-row-btn').forEach(el => el.remove());
-    
     clone.querySelectorAll('.row-changed, .row-new').forEach(r => {
         r.classList.remove('row-changed', 'row-new');
         r.style.borderLeft = 'none';
     });
 
+    // ── 3. Clean header text ─────────────────────────────────────────
     clone.querySelectorAll('thead th').forEach(th => {
-        const columnHeader = th.querySelector('.column-header');
-        if (columnHeader) {
-            const span = columnHeader.querySelector('span');
-            if (span) {
-                th.textContent = span.textContent;
-            }
-        }
+        const span = th.querySelector('.column-header span');
+        if (span) th.textContent = span.textContent;
     });
 
+    // ── 4. Convert cell inputs / radios to plain text ────────────────
     clone.querySelectorAll('tbody tr').forEach(row => {
-        const cells = row.querySelectorAll('td');
-        
-        cells.forEach((cell, index) => {
+        row.querySelectorAll('td').forEach((cell, index) => {
+            // Serial number column
             if (index === 0) {
-                const rowNum = cell.querySelector('.row-number');
-                if (rowNum) {
-                    cell.textContent = rowNum.textContent;
-                }
+                const rn = cell.querySelector('.row-number');
+                if (rn) cell.textContent = rn.textContent;
                 return;
             }
-            
+
+            // Radio cells — convert to plain text (delivery method, letter language)
+            const radioCell = cell.querySelector('.radio-cell');
+            if (radioCell) {
+                const checked = radioCell.querySelector('input[type="radio"]:checked');
+                cell.innerHTML = '';
+                const span = document.createElement('span');
+                span.textContent = checked ? checked.value : '—';
+                span.style.cssText = 'font-size:11px; font-weight:600; color:#1a5276;';
+                cell.appendChild(span);
+                return;
+            }
+
             const inputs = cell.querySelectorAll('input.cell, textarea.cell');
-            const contentEditables = cell.querySelectorAll('[contenteditable="true"].cell');
-            
-            if (contentEditables.length > 0) {
-                if (contentEditables.length === 1) {
-                    const div = contentEditables[0];
-                    const container = document.createElement('div');
-                    container.innerHTML = div.innerHTML;
-                    cell.innerHTML = '';
-                    cell.appendChild(container);
-                } else if (contentEditables.length === 2) {
-                    const english = contentEditables[0];
-                    const hindi = contentEditables[1];
-                    
-                    const container = document.createElement('div');
-                    if (english && english.innerHTML.trim()) {
-                        const engDiv = document.createElement('div');
-                        engDiv.innerHTML = english.innerHTML;
-                        engDiv.style.marginBottom = '2px';
-                        container.appendChild(engDiv);
-                    }
-                    if (hindi && hindi.innerHTML.trim()) {
-                        const hinDiv = document.createElement('div');
-                        hinDiv.innerHTML = hindi.innerHTML;
-                        hinDiv.style.cssText = 'font-family: "Noto Sans Devanagari", sans-serif; font-size: 1.1em; color: #555;';
-                        container.appendChild(hinDiv);
-                    }
-                    cell.innerHTML = '';
-                    cell.appendChild(container);
-                }
+            const ces = cell.querySelectorAll('[contenteditable="true"].cell');
+
+            if (ces.length > 0) {
+                const container = document.createElement('div');
+                ces.forEach((ce, i) => {
+                    if (!ce.innerHTML.trim()) return;
+                    const d = document.createElement('div');
+                    d.innerHTML = ce.innerHTML;
+                    if (i === 1) d.style.cssText = 'font-family:"Noto Sans Devanagari",sans-serif;font-size:0.95em;color:#555;margin-top:2px;';
+                    else d.style.marginBottom = '2px';
+                    container.appendChild(d);
+                });
+                cell.innerHTML = '';
+                cell.appendChild(container);
                 return;
             }
-            
-            if (inputs.length === 0) return;
-            
+
+            if (!inputs.length) return;
+
             if (inputs.length === 1) {
-                const input = inputs[0];
-                cell.textContent = input.value || '';
-            } else if (inputs.length === 2) {
-                const englishInput = cell.querySelector('.english-cell');
-                const hindiInput = cell.querySelector('.hindi-cell');
-                
+                cell.textContent = inputs[0].value || '';
+            } else {
+                const eng = cell.querySelector('.english-cell');
+                const hin = cell.querySelector('.hindi-cell');
                 const container = document.createElement('div');
-                if (englishInput && englishInput.value.trim()) {
-                    const engDiv = document.createElement('div');
-                    engDiv.textContent = englishInput.value.trim();
-                    engDiv.style.marginBottom = '2px';
-                    container.appendChild(engDiv);
+                if (eng && eng.value.trim()) {
+                    const d = document.createElement('div');
+                    d.textContent = eng.value.trim();
+                    d.style.marginBottom = '2px';
+                    container.appendChild(d);
                 }
-                if (hindiInput && hindiInput.value.trim()) {
-                    const hinDiv = document.createElement('div');
-                    hinDiv.textContent = hindiInput.value.trim();
-                    hinDiv.style.cssText = 'font-family: "Noto Sans Devanagari", sans-serif; font-size: 1.1em; color: #555;';
-                    container.appendChild(hinDiv);
+                if (hin && hin.value.trim()) {
+                    const d = document.createElement('div');
+                    d.textContent = hin.value.trim();
+                    d.style.cssText = 'font-family:"Noto Sans Devanagari",sans-serif;font-size:0.95em;color:#555;';
+                    container.appendChild(d);
                 }
                 cell.innerHTML = '';
                 cell.appendChild(container);
@@ -2223,115 +2419,94 @@ function exportToPDF() {
         });
     });
 
+    // ── 5. Inject PDF-only styles ────────────────────────────────────
     const style = document.createElement('style');
     style.textContent = `
-        @page {
-            size: A3 landscape;
-            margin: 2mm;
-        }
-    
-        html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100%;
-            height: 100%;
-            background: #fff;
-        }
-    
-        .pdf-wrapper {
-            width: 100%;
-            margin-left: -5mm;
-            padding: 0;
-            text-align: left;
-        }
-    
+        * { box-sizing: border-box !important; }
+
         table {
-            width: 100%;
-            border-collapse: collapse;
-            font-family: Arial, "Segoe UI", sans-serif;
-            font-size: 12px;
-            table-layout: fixed;
-            margin-left: 0 !important;
+            width: 100% !important;
+            border-collapse: collapse !important;
+            font-family: Arial, "Segoe UI", sans-serif !important;
+            font-size: 11px !important;
+            table-layout: fixed !important;
+            position: static !important;
+            bottom: auto !important;
+            left: auto !important;
+            margin: 0 !important;
         }
-    
-        thead {
-            display: table-header-group;
-            break-inside: avoid;
-        }
-    
-        tbody {
-            display: table-row-group;
-        }
-    
-        tr {
-            page-break-inside: avoid;
-            break-inside: avoid;
-        }
-    
+
+        thead { display: table-header-group !important; }
+        tbody { display: table-row-group !important; }
+        tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+
         th {
             background-color: #34495e !important;
             color: white !important;
-            padding: 5px 3px !important;
+            padding: 8px 5px !important;
             text-align: center !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
             border: 1px solid #2c3e50 !important;
-            font-size: 14px !important;
+            font-size: 11px !important;
             word-wrap: break-word !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-    
+
         td {
             border: 1px solid #ccc !important;
-            padding: 5px 3px !important;
+            padding: 7px 5px !important;
             vertical-align: middle !important;
             text-align: center !important;
-            font-size: 12px !important;
-            line-height: 1.25 !important;
+            font-size: 11px !important;
+            line-height: 1.4 !important;
             word-wrap: break-word !important;
         }
-    
-        tbody tr:nth-child(even) {
-            background-color: #f9f9f9 !important;
+
+        tbody tr:nth-child(even) td {
+            background-color: #f5f5f5 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-    
-        tbody tr:nth-child(odd) {
-            background-color: white !important;
-        }
-    
+
         td:first-child {
             background-color: #ecf0f1 !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-    
-        th:nth-child(1), td:nth-child(1) { width: 5% !important; }
-        th:nth-child(2), td:nth-child(2) { width: 12% !important; }
+
+        /* 7 columns — A3 landscape ~420mm usable width */
+        th:nth-child(1), td:nth-child(1) { width: 5%  !important; }
+        th:nth-child(2), td:nth-child(2) { width: 10% !important; }
         th:nth-child(3), td:nth-child(3) { width: 22% !important; }
-        th:nth-child(4), td:nth-child(4) { width: 15% !important; }
-        th:nth-child(5), td:nth-child(5) { width: 28% !important; }
-        th:nth-child(6), td:nth-child(6) { width: 18% !important; }
+        th:nth-child(4), td:nth-child(4) { width: 13% !important; }
+        th:nth-child(5), td:nth-child(5) { width: 26% !important; }
+        th:nth-child(6), td:nth-child(6) { width: 12% !important; }
+        th:nth-child(7), td:nth-child(7) { width: 12% !important; }
     `;
-    
     clone.appendChild(style);
-    
-    const wrapper = document.createElement('div');
-    wrapper.classList.add('pdf-wrapper');
-    wrapper.appendChild(clone);
-    
+
+    // ── 6. Mount in a clean off-screen container at top:0 ───────────
+    // This is the key blank-page fix: html2pdf.from() uses the element's
+    // getBoundingClientRect, so mounting at fixed top:0 left:0 means
+    // the capture starts at the very top of the PDF page.
+    const stage = document.createElement('div');
+    stage.style.cssText = 'position:fixed;top:0;left:0;width:297mm;z-index:-99999;background:white;overflow:visible;pointer-events:none;';
+    stage.appendChild(clone);
+    document.body.appendChild(stage);
+
+    // ── 7. Generate ──────────────────────────────────────────────────
     const opt = {
-        margin: [2, 1, 2, 2],
+        margin: [5, 5, 5, 5],
         filename: `DAK_Acquired_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.99 },
+        image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
-            scale: 1.8,
+            scale: 2,
             useCORS: true,
             logging: false,
-            letterRendering: true,
             backgroundColor: '#ffffff',
+            scrollX: 0,
             scrollY: 0
         },
         jsPDF: {
@@ -2345,17 +2520,22 @@ function exportToPDF() {
             avoid: 'tr'
         }
     };
-    
+
     html2pdf()
         .set(opt)
-        .from(wrapper)
+        .from(clone)
         .save()
-        .then(() => showNotification('PDF exported successfully!', 'success'))
-        .catch(error => {
-            console.error('PDF generation error:', error);
-            showNotification('Error generating PDF: ' + error.message, 'error');
+        .then(() => {
+            document.body.removeChild(stage);
+            showNotification('PDF exported successfully!', 'success');
+        })
+        .catch(err => {
+            document.body.removeChild(stage);
+            console.error('PDF error:', err);
+            showNotification('Error generating PDF: ' + err.message, 'error');
         });
 }
+
 
 //=====================================
 // REBUILD DATA FOR NO OF ENTRIES
@@ -2374,7 +2554,8 @@ function rebuildTable() {
             letterNumber: '',
             subject: '',
             subjectHindi: '',
-            signature: ''
+            signature: '',
+            letterLanguage: ''
         };
         tableData.push(rowData);
     }
@@ -2421,6 +2602,13 @@ function rebuildTable() {
                 ${createCellContent('subjectHindi', rowData.subjectHindi, false, false)}
             </td>
             <td>${createCellContent('signature', rowData.signature, true, false, true)}</td>
+            <td>
+                <div class="radio-cell" data-row="${startIdx + index}" data-field="letterLanguage">
+                    <label class="radio-label"><input type="radio" name="acq_letterLanguage_${startIdx + index}" value="Hindi" ${rowData.letterLanguage === 'Hindi' ? 'checked' : ''} onchange="saveRadioValue(this)"> Hindi</label>
+                    <label class="radio-label"><input type="radio" name="acq_letterLanguage_${startIdx + index}" value="English" ${rowData.letterLanguage === 'English' ? 'checked' : ''} onchange="saveRadioValue(this)"> English</label>
+                    <label class="radio-label"><input type="radio" name="acq_letterLanguage_${startIdx + index}" value="Bilingual" ${rowData.letterLanguage === 'Bilingual' ? 'checked' : ''} onchange="saveRadioValue(this)"> Bilingual</label>
+                </div>
+            </td>
         `;
         tbody.appendChild(row);
 
@@ -2444,7 +2632,7 @@ function rebuildTable() {
 //============================================
 
 function hasRequiredFields(rowData) {
-    const requiredFields = ['acquiredDate', 'receivedFrom', 'letterNumber', 'subject'];
+    const requiredFields = ['acquiredDate', 'receivedFrom', 'letterNumber', 'subject', 'letterLanguage'];
     return requiredFields.every(field => 
         rowData[field] && rowData[field].toString().trim() !== ''
     );
@@ -2525,6 +2713,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const pdfBtn = document.getElementById('pdfView');
     if (pdfBtn) {
         pdfBtn.addEventListener('click', exportToPDF);
-        console.log('✅ PDF button listener attached');
+        console.log(' PDF button listener attached');
     }
 });
